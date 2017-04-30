@@ -1,0 +1,105 @@
+-- (C) 2017 Wout Elsinghorst
+
+imports
+{
+import CCO.Printing
+}
+
+{
+
+type Language = String
+
+data DiagramType 
+  = DiagramType_Program
+  | DiagramType_Compiler
+  
+  | DiagramType_Interpreter
+  | DiagramType_Platform
+  
+  | DiagramType_Connector
+  deriving Eq
+}
+
+
+attr Diag Diag_
+  syn   diagramType :: DiagramType
+  syn   isTypeCorrect :: Bool
+  syn   isWrittenInLanguage :: (Maybe Language)
+  syn   canExecuteLanguage  :: (Maybe Language)
+  
+  
+sem Diag_
+  | Program     lhs.diagramType = DiagramType_Program
+  | Compiler    lhs.diagramType = DiagramType_Compiler         
+  
+  | Platform    lhs.diagramType = DiagramType_Platform
+  | Interpreter lhs.diagramType = DiagramType_Interpreter
+  
+  | Execute     lhs.diagramType = DiagramType_Connector
+  | Compile     lhs.diagramType = DiagramType_Connector 
+
+sem Diag_
+  | Program     lhs.isTypeCorrect = True
+  | Compiler    lhs.isTypeCorrect = True
+  
+  | Platform    lhs.isTypeCorrect = True
+  | Interpreter lhs.isTypeCorrect = True
+      
+  | Execute     lhs.isTypeCorrect = (@d1.isTypeCorrect       && @d2.isTypeCorrect)                    && 
+                                    (@d1.diagramType `isExecutionTypeCompatibleWith` @d2.diagramType) &&
+                                    (@d1.isWrittenInLanguage == @d2.canExecuteLanguage)
+  | Compile     lhs.isTypeCorrect = tcCompile @d1.diagramType @d2.diagramType -- TODO
+
+sem Diag_
+  | Program     lhs.canExecuteLanguage = Nothing
+  | Compiler    lhs.canExecuteLanguage = Nothing
+  
+  | Platform    lhs.canExecuteLanguage = Just @m
+  | Interpreter lhs.canExecuteLanguage = Just @l
+      
+  | Execute     lhs.canExecuteLanguage = Nothing
+  | Compile     lhs.canExecuteLanguage = Nothing
+  
+sem Diag_
+  | Program     lhs.isWrittenInLanguage = Just @l
+  | Compiler    lhs.isWrittenInLanguage = Just @m
+  
+  | Platform    lhs.isWrittenInLanguage = Nothing
+  | Interpreter lhs.isWrittenInLanguage = Just @m
+      
+  | Execute     lhs.isWrittenInLanguage = Nothing -- TODO
+  | Compile     lhs.isWrittenInLanguage = Nothing -- TODO
+  
+sem Diag
+  | Diag      lhs.diagramType         = @d.diagramType
+  | Diag      lhs.isWrittenInLanguage = @d.isWrittenInLanguage
+  | Diag      lhs.canExecuteLanguage  = @d.canExecuteLanguage
+  | Diag      lhs.isTypeCorrect       = @d.isTypeCorrect
+  
+{
+-- Check whether the source/target combinations make sense for execution
+isExecutionTypeCompatibleWith :: DiagramType -> DiagramType -> Bool
+isExecutionTypeCompatibleWith d1 d2 = isExecutable d1 && isAcceptableExecutionTarget d2
+  where
+    isExecutable d = d `elem` [ DiagramType_Program, DiagramType_Compiler, DiagramType_Interpreter, DiagramType_Connector {- TODO: Maybe? -}]
+    isAcceptableExecutionTarget d = d `elem` [ DiagramType_Platform, DiagramType_Interpreter ]
+    
+    
+-- TODO: Implement
+tcCompile :: DiagramType -> DiagramType -> Bool
+tcCompile a b = True
+
+}
+  
+{
+
+diagramType :: Diag -> DiagramType
+diagramType diag = diagramType_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
+
+isTypeCorrect :: Diag -> Either String Diag
+isTypeCorrect diag = 
+  if isTypeCorrect_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
+     then Right $ diag
+     else Left  $ "An error occured but we don't know where. We'll get back to you on that."
+
+}
