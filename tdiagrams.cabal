@@ -19,12 +19,12 @@ extra-source-files:    AUTHORS, Makefile, src/CCO/Diag/AG.ag,
                        src/CCO/Picture/AG/Base.ag, 
                        src/CCO/Picture/AG/Printing.ag
 
-executable parse-tdiag
-  main-is:             ParseTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1
-  other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
-                       CCO.Diag.Parser
-  hs-source-dirs:      src
+--executable parse-tdiag
+--  main-is:             ParseTDiag.hs
+--  build-depends:       base, uu-cco >= 0.1.0.1
+--  other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
+--                       CCO.Diag.Parser
+--  hs-source-dirs:      src
 
 -- executable tc-tdiag
 --   main-is:             TypeCheckTDiag.hs
@@ -37,7 +37,7 @@ executable tdiag2picture
   main-is:             TDiag2Picture.hs
   build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
-                       CCO.Diag.Parser
+                       CCO.Diag.Parser, CCO.Picture.AG, CCO.Picture, CCO.D2P
   hs-source-dirs:      src
   
 executable pp-picture
@@ -50,5 +50,5 @@ test-suite spec
   type:  exitcode-stdio-1.0
   main-is: Spec.hs
   hs-source-dirs: test, src
-  other-modules: CCO.D2P
+  other-modules: CCO.D2P, CCO.Diag.AG, CCO.Diag.Base, CCO.Picture, CCO.Picture.AG
   build-depends:      base, hspec, uu-cco, parsec, split

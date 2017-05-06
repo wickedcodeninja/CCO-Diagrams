@@ -3,50 +3,48 @@ imports
 import CCO.Picture
 }
 
+{
+data Coords = Coords {bottom_left :: (Double, Double), right :: Double, max_right :: Double, top :: (Double, Double)}
+}
+
 data Root | Root d :: Diag
 
 attr Diag_ Diag 
   inh right :: {Double}
   inh bottom_left :: {(Double, Double)}
   syn pic :: {Commands}
-  syn new_right :: {Double}
-  syn new_bottom_left :: {(Double, Double)}
+  syn coords :: {Coords}
 
 attr Root
   syn pic :: {Picture}
 
-sem Root | Root lhs.pic = Picture (0,0) @d.pic
-                  d.right = 0
-                  d.bottom_left = (0,0)
+sem Root | Root lhs.pic = Picture (max_right @d.coords, (snd. top) @d.coords) @d.pic
+                d.bottom_left = (0,0)
+                d.right = 0
 
 sem Diag | Diag lhs.pic = @d.pic
-                d.max_right = 0
-                d.right = @lhs.right
+                lhs.coords = @d.coords
                 d.bottom_left = @lhs.bottom_left
-                lhs.new_bottom_left = @d.new_bottom_left
+                d.right = @lhs.right
 
 sem Diag_
   | Program lhs.pic = mkProgram (@lhs.right,snd @lhs.bottom_left) @p @l
-            loc.temp_right = fst @lhs.bottom_left + 65
-            lhs.new_right = @loc.temp_right - 7.5
-            lhs.new_bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
+            loc.max_right = fst @lhs.bottom_left + 65
+            loc.right = @loc.max_right - 7.5
+            loc.bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
+            lhs.coords = Coords @loc.bottom_left @loc.right @loc.max_right (snd @loc.bottom_left, snd @loc.bottom_left + 35)
   | Platform lhs.pic = mkPlatform (@lhs.right,0) @m
-             lhs.new_right = 0
-             lhs.new_bottom_left = (0,0)
+             lhs.coords = Coords (0,0) 0 0 (0,0)
   | Interpreter lhs.pic = mkInterpreter (@lhs.right,snd @lhs.bottom_left) @i @l @m
-                lhs.new_right = 0
-                lhs.new_bottom_left = (0,0)
+             lhs.coords = Coords (0,0) 0 0 (0,0)
   | Compiler lhs.pic = mkCompiler (@lhs.right,0) @c @l1 @l2 @m
-             lhs.new_right = 0
-             lhs.new_bottom_left = (0,0)
+             lhs.coords = Coords (0,0) 0 0 (0,0)
   | Execute lhs.pic = @d1.pic ++ @d2.pic
      d1.bottom_left = @lhs.bottom_left
-     d2.bottom_left = (@d1.new_right, snd @lhs.bottom_left)
-     lhs.new_bottom_left = @d2.new_bottom_left
-     lhs.new_right = @d2.new_right
+     d2.bottom_left = (0, snd @lhs.bottom_left)
+     lhs.coords = Coords (0,0) 0 0 (0,0)
   | Compile lhs.pic = @d1.pic ++ @d2.pic
-            lhs.new_right = 0
-            lhs.new_bottom_left = (0,0)
+            lhs.coords = Coords (0,0) 0 0 (0,0)
 
 
 {
@@ -64,12 +62,12 @@ mkProgram (x,y) p l = [
 
 mkPlatform :: (Double, Double) -> String -> Commands
 mkPlatform (x,y) m = [
-                      Put (x+0,y+15) (Line (5,-3) 25),
-                      Put (x+25,y+0) (Line (5,3) 25),
-                      Put (x+0,y+15) (Line (0,1) 15),
-                      Put (x+0,y+30) (Line (1,0) 50),
-                      Put (x+50,y+30) (Line (0,-1) 15),
-                      Put (x+0,y+15) (Makebox (50,15) m)
+                      Put (x+0,y-15) (Line (5,-3) 25),
+                      Put (x+25,y-0) (Line (5,3) 25),
+                      Put (x+0,y-15) (Line (0,1) 15),
+                      Put (x+0,y-30) (Line (1,0) 50),
+                      Put (x+50,y-30) (Line (0,-1) 15),
+                      Put (x+0,y-15) (Makebox (50,15) m)
                      ]
 
 mkInterpreter :: (Double, Double) -> String -> String -> String -> Commands
