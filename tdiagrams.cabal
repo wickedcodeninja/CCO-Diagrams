@@ -26,12 +26,12 @@ executable parse-tdiag
                        CCO.Diag.Parser
   hs-source-dirs:      src
 
-executable tc-tdiag
-  main-is:             TypeCheckTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
-  other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
-                       CCO.Diag.Parser
-  hs-source-dirs:      src
+-- executable tc-tdiag
+--   main-is:             TypeCheckTDiag.hs
+--   build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
+--   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
+--                        CCO.Diag.Parser
+--   hs-source-dirs:      src
   
 executable tdiag2picture
   main-is:             TDiag2Picture.hs
@@ -49,5 +49,6 @@ executable pp-picture
 test-suite spec
   type:  exitcode-stdio-1.0
   main-is: Spec.hs
-  hs-source-dirs: test
-  build-depends:      hspec
+  hs-source-dirs: test, src
+  other-modules: CCO.D2P
+  build-depends:      base, hspec, uu-cco, parsec, split
