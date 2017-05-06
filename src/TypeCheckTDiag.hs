@@ -8,7 +8,7 @@ import Control.Arrow  (Arrow (arr), (>>>))
 import CCO.Feedback ( errorMessage )
 import CCO.Printing ( text )
 
-import CCO.Diag.AG ( DiagramType, diagramType, isTypeCorrect )
+import CCO.Diag.AG ( isTypeCorrect )
 
 typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \a -> 
