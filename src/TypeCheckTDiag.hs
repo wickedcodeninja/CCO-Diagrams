@@ -5,16 +5,7 @@ import CCO.Diag       (Diag)
 import CCO.Tree       (ATerm, Tree (fromTree, toTree), parser)
 import Control.Arrow  (Arrow (arr), (>>>))
 
-import CCO.Feedback ( errorMessage )
-import CCO.Printing ( text )
-
-import CCO.Diag.AG ( isTypeCorrect )
-
-typeCheckDiag :: Component Diag Diag
-typeCheckDiag = component $ \a -> 
-  case isTypeCorrect a of
-    Right tree -> pure tree
-    Left  err  -> errorMessage $ text err
+import CCO.Diag.TypeChecking ( typeCheckDiag )
 
 main = 
   ioWrap (parser >>> (component toTree :: Component ATerm Diag) >>> typeCheckDiag >>> arr fromTree >>> printer)

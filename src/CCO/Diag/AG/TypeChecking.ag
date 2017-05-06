@@ -5,38 +5,35 @@ imports
 import CCO.Printing
 
 import Data.Maybe
-
 }
 
 {
-
 type Language = String
 type SourceAndTargetLanguage = (Language, Language)
 
+data MessageType = Error | Warning
+type Message = (MessageType, String)
 }
 
 
 attr Diag Diag_
-  syn   isTypeCorrect :: Bool
-  syn   isWrittenInLanguage :: (Maybe Language)
-  syn   canExecuteLanguage  :: (Maybe Language)
-  syn   canCompileLanguage  :: (Maybe SourceAndTargetLanguage)
+  syn   typeDiagnostics :: { [Message] }
+  syn   isWrittenInLanguage :: { Maybe Language }
+  syn   canExecuteLanguage  :: { Maybe Language }
+  syn   canCompileLanguage  :: { Maybe SourceAndTargetLanguage }
+ 
+attr Diag_ 
+  inh  pos :: { SourcePos }
  
 sem Diag_
-  | Program     lhs.isTypeCorrect = True
-  | Compiler    lhs.isTypeCorrect = True
+  | Program     lhs.typeDiagnostics = []
+  | Compiler    lhs.typeDiagnostics = []
   
-  | Platform    lhs.isTypeCorrect = True
-  | Interpreter lhs.isTypeCorrect = True
+  | Platform    lhs.typeDiagnostics = []
+  | Interpreter lhs.typeDiagnostics = []
       
-  | Execute     lhs.isTypeCorrect = (    @d1.isTypeCorrect && isJust @d1.isWrittenInLanguage
-                                      && @d2.isTypeCorrect && isJust @d2.canExecuteLanguage          
-                                      && @d1.isWrittenInLanguage == @d2.canExecuteLanguage
-                                    )
-  | Compile     lhs.isTypeCorrect = (    @d1.isTypeCorrect && isJust @d1.isWrittenInLanguage
-                                      && @d2.isTypeCorrect && isJust @d2.canCompileLanguage          
-                                      && @d1.isWrittenInLanguage == (fmap fst @d2.canCompileLanguage)
-                                    )
+  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ tcExecute @lhs.pos @d1.isWrittenInLanguage @d2.canExecuteLanguage
+  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ tcCompile @lhs.pos @d1.isWrittenInLanguage (fmap fst @d2.canCompileLanguage)
 
 sem Diag_
   | Program     lhs.canExecuteLanguage = Nothing
@@ -74,12 +71,37 @@ sem Diag
   | Diag      lhs.canExecuteLanguage  = @d.canExecuteLanguage
   | Diag      lhs.isTypeCorrect       = @d.isTypeCorrect
   
+  | Diag      d.pos                   = @pos
+  
 {
 
-isTypeCorrect :: Diag -> Either String Diag
-isTypeCorrect diag = 
-  if isTypeCorrect_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
-     then Right $ diag
-     else Left  $ "An error occured but we don't know where. We'll get back to you on that."
+tcCompile :: SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcCompile = tcConnector "Compile"
 
+tcExecute :: SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcExecute = tcConnector "Execute"
+
+tcConnector :: String -> SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcConnector typ pos source target = 
+  let hasSourceLanguage = 
+        case source of
+          Nothing -> [(Error, typ ++ ": First diagram has missing implementation language.")]
+          _       -> []
+  
+      hasTargetLanguage = 
+        case target of
+          Nothing -> [(Error, typ ++ ": Second diagram is not a suitable target.")]
+          _       -> []
+          
+      sourceAndTargetLanguageMatch = 
+          case (source, target) of
+            (Just l1, Just l2 ) | l1 /= l2 -> [(Error, typ ++ ": Source language '" ++ l1 ++ "' does not match target language '" ++ l2 ++ "'")]
+            _                              -> []
+  in hasSourceLanguage ++ hasTargetLanguage ++ sourceAndTargetLanguageMatch
+}
+
+  
+{
+getTypeDiagnostics :: Diag -> [Message]
+getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
 }
