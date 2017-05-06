@@ -11,13 +11,13 @@ import Data.Maybe
 type Language = String
 type SourceAndTargetLanguage = (Language, Language)
 
-data MessageType = Error | Warning
-type Message = (MessageType, String)
+data Diagnostic = TyError SourcePos String | Warning SourcePos String
+
 }
 
 
 attr Diag Diag_
-  syn   typeDiagnostics :: { [Message] }
+  syn   typeDiagnostics :: { [Diagnostic] }
   syn   isWrittenInLanguage :: { Maybe Language }
   syn   canExecuteLanguage  :: { Maybe Language }
   syn   canCompileLanguage  :: { Maybe SourceAndTargetLanguage }
@@ -66,42 +66,42 @@ sem Diag_
   | Compile     lhs.isWrittenInLanguage = fmap snd @d2.canCompileLanguage
                                             
 sem Diag
-  | Diag      lhs.diagramType         = @d.diagramType
+  | Diag      lhs.typeDiagnostics     = @d.typeDiagnostics
   | Diag      lhs.isWrittenInLanguage = @d.isWrittenInLanguage
   | Diag      lhs.canExecuteLanguage  = @d.canExecuteLanguage
-  | Diag      lhs.isTypeCorrect       = @d.isTypeCorrect
-  
+  | Diag      lhs.canCompileLanguage  = @d.canCompileLanguage
+
   | Diag      d.pos                   = @pos
   
 {
 
-tcCompile :: SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcCompile :: SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
 tcCompile = tcConnector "Compile"
 
-tcExecute :: SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcExecute :: SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
 tcExecute = tcConnector "Execute"
 
-tcConnector :: String -> SourcePos -> Maybe Language -> Maybe Language -> [(MessageType, String)]
+tcConnector :: String -> SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
 tcConnector typ pos source target = 
   let hasSourceLanguage = 
         case source of
-          Nothing -> [(Error, typ ++ ": First diagram has missing implementation language.")]
+          Nothing -> [(TyError pos $ typ ++ ": First diagram has missing implementation language.")]
           _       -> []
   
       hasTargetLanguage = 
         case target of
-          Nothing -> [(Error, typ ++ ": Second diagram is not a suitable target.")]
+          Nothing -> [(TyError pos $ typ ++ ": Second diagram is not a suitable target.")]
           _       -> []
           
       sourceAndTargetLanguageMatch = 
           case (source, target) of
-            (Just l1, Just l2 ) | l1 /= l2 -> [(Error, typ ++ ": Source language '" ++ l1 ++ "' does not match target language '" ++ l2 ++ "'")]
+            (Just l1, Just l2 ) | l1 /= l2 -> [(TyError pos $ typ ++ ": Source language '" ++ l1 ++ "' does not match target language '" ++ l2 ++ "'")]
             _                              -> []
   in hasSourceLanguage ++ hasTargetLanguage ++ sourceAndTargetLanguageMatch
 }
 
   
 {
-getTypeDiagnostics :: Diag -> [Message]
+getTypeDiagnostics :: Diag -> [Diagnostic]
 getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
 }
