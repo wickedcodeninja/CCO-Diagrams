@@ -45,3 +45,9 @@ executable pp-picture
   build-depends:       base, uu-cco >= 0.1.0.1
   other-modules:       CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
+
+test-suite spec
+  type:  exitcode-stdio-1.0
+  main-is: Spec.hs
+  hs-source-dirs: test
+  build-depends:      hspec
