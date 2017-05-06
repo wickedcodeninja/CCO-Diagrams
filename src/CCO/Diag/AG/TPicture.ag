@@ -39,8 +39,9 @@ sem Diag_
   | Platform lhs.pic = mkPlatform (fst @lhs.bottom_left, snd @lhs.bottom_left + @lhs.offset) @m
              loc.right = fst @lhs.bottom_left + 50
              lhs.coords = Coords (fst @lhs.bottom_left + 25, snd @lhs.bottom_left - 30) @loc.right @loc.right (snd @lhs.bottom_left - 30,snd @lhs.bottom_left)
-  | Interpreter lhs.pic = mkInterpreter (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @i @l @m
-             loc.right = @lhs.right + 50
+  | Interpreter lhs.pic = mkInterpreter (@loc.left,snd @lhs.bottom_left + @lhs.offset) @i @l @m
+             loc.left = fst @lhs.bottom_left
+             loc.right = @loc.left + 50
              loc.bottom_left_y = snd @lhs.bottom_left - 30
              lhs.coords = Coords (fst @lhs.bottom_left, @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left)
   | Compiler lhs.pic = mkCompiler (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @c @l1 @l2 @m
@@ -49,11 +50,15 @@ sem Diag_
              lhs.coords = Coords (@lhs.right+50 , @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, fst @lhs.bottom_left + 10)
   | Execute lhs.pic = @d1.pic ++ @d2.pic
      d1.bottom_left = @lhs.bottom_left
-     d2.bottom_left = (0, snd @lhs.bottom_left)
-     lhs.coords = Coords (0,0) 0 0 (0,0)
+     d1.right = @lhs.right
+     d2.bottom_left = bottom_left @d1.coords
+     d2.right = right @d1.coords
+     loc.max_right = max (max_right @d1.coords) (max_right @d2.coords)
+     loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
+     loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
+     lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
   | Compile lhs.pic = @d1.pic ++ @d2.pic
             lhs.coords = Coords (0,0) 0 0 (0,0)
-
 
 {
 mkProgram :: (Double, Double) -> String -> String -> Commands
