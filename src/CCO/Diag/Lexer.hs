@@ -67,7 +67,8 @@ keyword_ = fmap Keyword $ string "compiler" <|> string "compile" <|>
                           string "for" <|> string "from" <|> string "in" <|>
                           string "interpreter" <|> string "on" <|>
                           string "platform" <|> string "program" <|>
-                          string "to" <|> string "with"
+                          string "to" <|> string "with" <|> 
+                          string "use" <|> string "let" <|> string "[" <|> string "]" <|> string "," <|> string "="
 
 -- | A 'Lexer' that recognises 'Ident' tokens.
 ident_ :: Lexer Token

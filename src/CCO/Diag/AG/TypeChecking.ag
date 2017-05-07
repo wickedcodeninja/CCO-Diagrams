@@ -59,6 +59,8 @@ sem Diag_
   | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
   | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
 
+  | Use         lhs.diagType = undefined -- TODO: Lookup the diagram in the typed environment
+  | Let         lhs.diagType = @d.diagType
   
 sem Diag_
   | Program     lhs.typeDiagnostics = []
@@ -70,6 +72,9 @@ sem Diag_
   | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @d1.diagType @d2.diagType)
   | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @d1.diagType @d2.diagType)
 
+  | Use         lhs.typeDiagnostics = undefined -- TODO: Check if referred diagram exists in the typed environment
+  | Let         lhs.typeDiagnostics = @d.typeDiagnostics -- TODO: collect diagnostics from the `binds`
+  
 sem Diag_
   | Program     loc.canExecuteLanguage = Nothing
   | Compiler    loc.canExecuteLanguage = Nothing
@@ -80,6 +85,9 @@ sem Diag_
   | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
   | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
 
+  | Use         lhs.canExecuteLanguage = undefined -- TODO: Lookup this property in the environment
+  | Let         lhs.canExecuteLanguage = @d.canExecuteLanguage
+  
 sem Diag_
   | Program     loc.canCompileLanguage = Nothing
   | Compiler    loc.canCompileLanguage = Just (@l1, @l2)
@@ -89,6 +97,9 @@ sem Diag_
       
   | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
   | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
+  
+  | Use         lhs.canCompileLanguage = undefined -- TODO: Lookup this property in the environment
+  | Let         lhs.canCompileLanguage = @d.canCompileLanguage
   
 sem Diag_
   | Program     loc.implementationLanguage = Right @l
@@ -101,7 +112,10 @@ sem Diag_
   | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
                                                Just (l1, l2) -> Right l2
                                                Nothing       -> Left "invalid"
+  | Use         lhs.implementationLanguage = undefined -- TODO: Lookup this property in the environment
+  | Let         lhs.implementationLanguage = @d.implementationLanguage
 
+                                               
 sem Diag
   | Diag      lhs.typeDiagnostics        = @d.typeDiagnostics
   | Diag      lhs.implementationLanguage = @d.implementationLanguage
