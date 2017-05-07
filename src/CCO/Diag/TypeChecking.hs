@@ -16,21 +16,9 @@ import System.IO
 
 typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \diag -> 
-  let msgs = getTypeDiagnostics diag
-      
-      isError (TyError _ _ _) = True
-      isError (Warning _ _)   = False
-      
-      (errors, warnings) =  partition isError msgs
-     
-      extractWarning (TyError _ _ _)   = Nothing
-      extractWarning (Warning pos msg) = Just msg
-     
-  in do () <- traverse_ warn_ . mapMaybe extractWarning $ warnings
-        
-        case errors of
-          []      -> pure diag
-          (err:_) -> errorMessage . ppDiagnostic $ err
+  case getTypeDiagnostics diag of
+    []      -> pure diag
+    (err:_) -> errorMessage . ppDiagnostic $ err
 
 ppDiagnostic :: Diagnostic -> Doc
 ppDiagnostic (TyError pos inferred descr)

@@ -19,8 +19,7 @@ type Platform = String
 type SourceAndTargetLanguage = (Language, Language)
 
 data Diagnostic 
-  = TyError SourcePos DiagType String 
-  | Warning SourcePos String
+  = TyError SourcePos DiagType String
 
 type Implementation = Either Platform Language
   
