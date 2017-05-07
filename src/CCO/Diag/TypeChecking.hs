@@ -47,5 +47,3 @@ describeSourcePos (SourcePos (File file) (Pos ln col)) = file ++ ":line " ++ sho
 describeSourcePos (SourcePos (File file) EOF)          = file ++ ":<at end of file>"
 describeSourcePos (SourcePos Stdin (Pos ln col))       = "line " ++ show ln ++ ":column " ++ show col
 describeSourcePos (SourcePos Stdin EOF)                = "<at end of input>"
-    
-          

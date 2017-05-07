@@ -14,27 +14,36 @@ import Data.Maybe
 
 {
 type Language = String
+type Platform = String
+
 type SourceAndTargetLanguage = (Language, Language)
 
-data Diagnostic = TyError SourcePos DiagType String | Warning SourcePos String
+data Diagnostic 
+  = TyError SourcePos DiagType String 
+  | Warning SourcePos String
 
+type Implementation = Either Platform Language
+  
 data DiagType 
   = Type_Top 
-  | Type_Program                          (Maybe Language)
-  | Type_Compiler SourceAndTargetLanguage (Maybe Language) -- canCompileLanguage
-  | Type_Executor Language                (Maybe Language) -- canExecuteLanguage
+  | Type_Program                          Implementation
+  | Type_Compiler SourceAndTargetLanguage Implementation -- canCompileLanguage
+  | Type_Executor Language                Implementation -- canExecuteLanguage
 
 instance Show DiagType where
-  show (Type_Top)                         = "Top"
-  show (Type_Program           (Just m))  = "Program {" ++ m ++ "}" 
-  show (Type_Compiler (l1, l2) (Just m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {" ++ m ++ "}" 
-  show (Type_Executor l1       (Just l2)) = "Executor [" ++ l1 ++ " ~> " ++ l2 ++ "]" 
+  show (Type_Top)                          = "Top"
+  show (Type_Program           (Right m))  = "Program {"  ++ m ++  "}"
+  show (Type_Program           (Left  m))  = "Program {!" ++ m ++ "!}"
+  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {"  ++ m ++  "}"
+  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {!" ++ m ++ "!}" 
+  show (Type_Executor l1       (Right l2)) = "Executor [" ++ l1 ++ " ~> " ++ l2 ++ "]"
+  show (Type_Executor l1       (Left  _))  = "Executor {!" ++ l1 ++ "!}" 
 }
 
 attr Diag Diag_
   syn   diagType :: { DiagType }
   syn   typeDiagnostics :: { [Diagnostic] }
-  syn   implementationLanguage :: { Maybe Language }
+  syn   implementationLanguage :: { Either Platform Language }
   syn   canExecuteLanguage  :: { Maybe Language }
   syn   canCompileLanguage  :: { Maybe SourceAndTargetLanguage }
  
@@ -83,22 +92,24 @@ sem Diag_
   | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
   
 sem Diag_
-  | Program     loc.implementationLanguage = Just @l
-  | Compiler    loc.implementationLanguage = Just @m
+  | Program     loc.implementationLanguage = Right @l
+  | Compiler    loc.implementationLanguage = Right @m
   
-  | Platform    loc.implementationLanguage = Nothing
-  | Interpreter loc.implementationLanguage = Just @m
+  | Platform    loc.implementationLanguage = Left  @m
+  | Interpreter loc.implementationLanguage = Right @m
       
   | Execute     loc.implementationLanguage = @d2.implementationLanguage
-  | Compile     loc.implementationLanguage = fmap snd @d2.canCompileLanguage
+  | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
+                                               Just (l1, l2) -> Right l2
+                                               Nothing       -> Left "invalid"
 
 sem Diag
-  | Diag      lhs.typeDiagnostics     = @d.typeDiagnostics
+  | Diag      lhs.typeDiagnostics        = @d.typeDiagnostics
   | Diag      lhs.implementationLanguage = @d.implementationLanguage
-  | Diag      lhs.canExecuteLanguage  = @d.canExecuteLanguage
-  | Diag      lhs.canCompileLanguage  = @d.canCompileLanguage
+  | Diag      lhs.canExecuteLanguage     = @d.canExecuteLanguage
+  | Diag      lhs.canCompileLanguage     = @d.canCompileLanguage
 
-  | Diag      d.pos                   = @pos
+  | Diag      d.pos                      = @pos
 
 {
 checkTyExecute :: SourcePos -> DiagType -> DiagType -> [Diagnostic]
@@ -115,27 +126,27 @@ checkTyCompile pos d1 d2                        | Nothing <- getImplementationLa
 }
 
 {
-replaceImplementationLanguage :: Maybe Language -> DiagType -> DiagType
-replaceImplementationLanguage l1@(Just _) (Type_Program     (Just _) ) = Type_Program     l1
-replaceImplementationLanguage l1@(Just _) (Type_Compiler l2 (Just _) ) = Type_Compiler l2 l1
-replaceImplementationLanguage l1@(Just _) (Type_Executor l2 (Just _) ) = Type_Executor l2 l1
-replaceImplementationLanguage _   _                                    = Type_Top
+replaceImplementationLanguage :: Implementation -> DiagType -> DiagType
+replaceImplementationLanguage l1 (Type_Program     (Right _) ) = Type_Program     $ l1
+replaceImplementationLanguage l1 (Type_Compiler l2 (Right _) ) = Type_Compiler l2 $ l1
+replaceImplementationLanguage l1 (Type_Executor l2 (Right _) ) = Type_Executor l2 $ l1
+replaceImplementationLanguage _   _                            = Type_Top
   
 getImplementationLanguage :: DiagType -> Maybe Language
-getImplementationLanguage (Type_Compiler _ x) = x
-getImplementationLanguage (Type_Executor _ x) = x
-getImplementationLanguage (Type_Program    x) = x
-getImplementationLanguage _                   = Nothing
+getImplementationLanguage (Type_Compiler _ (Right x)) = Just x
+getImplementationLanguage (Type_Executor _ (Right x)) = Just x
+getImplementationLanguage (Type_Program    (Right x)) = Just x
+getImplementationLanguage _                           = Nothing
 
-mkCompilerType :: Maybe Language -> Maybe SourceAndTargetLanguage -> DiagType
+mkCompilerType :: Implementation -> Maybe SourceAndTargetLanguage -> DiagType
 mkCompilerType m (Just l12) = Type_Compiler l12 m
 mkCompilerType _ Nothing    = Type_Top
 
-mkExecutorType :: Maybe Language -> Maybe Language -> DiagType
+mkExecutorType :: Implementation -> Maybe Language -> DiagType
 mkExecutorType l2 (Just l1) = Type_Executor l1 l2
 mkExecutorType _  Nothing   = Type_Top
 
-mkProgramType :: Maybe Language -> DiagType
+mkProgramType :: Implementation -> DiagType
 mkProgramType m = Type_Program m
 }
 
