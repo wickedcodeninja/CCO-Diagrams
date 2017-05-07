@@ -1,5 +1,10 @@
 -- (C) 2017 Wout Elsinghorst
 
+optpragmas
+{
+{-# LANGUAGE PatternGuards #-}
+}
+
 imports
 {
 import CCO.Printing
@@ -11,20 +16,42 @@ import Data.Maybe
 type Language = String
 type SourceAndTargetLanguage = (Language, Language)
 
-data Diagnostic = TyError SourcePos String | Warning SourcePos String
+data Diagnostic = TyError SourcePos DiagType String | Warning SourcePos String
 
+data DiagType 
+  = Type_Top 
+  | Type_Program                          (Maybe Language)
+  | Type_Compiler SourceAndTargetLanguage (Maybe Language) -- canCompileLanguage
+  | Type_Executor Language                (Maybe Language) -- canExecuteLanguage
+
+instance Show DiagType where
+  show (Type_Top)                         = "Top"
+  show (Type_Program           (Just m))  = "Program {" ++ m ++ "}" 
+  show (Type_Compiler (l1, l2) (Just m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {" ++ m ++ "}" 
+  show (Type_Executor l1       (Just l2)) = "Executor [" ++ l1 ++ " ~> " ++ l2 ++ "]" 
 }
 
-
 attr Diag Diag_
+  syn   diagType :: { DiagType }
   syn   typeDiagnostics :: { [Diagnostic] }
-  syn   isWrittenInLanguage :: { Maybe Language }
+  syn   implementationLanguage :: { Maybe Language }
   syn   canExecuteLanguage  :: { Maybe Language }
   syn   canCompileLanguage  :: { Maybe SourceAndTargetLanguage }
  
 attr Diag_ 
-  inh  pos :: { SourcePos }
- 
+  inh   pos :: { SourcePos }
+
+sem Diag_
+  | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
+  | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
+  
+  | Platform    lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+  | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+      
+  | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
+  | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
+
+  
 sem Diag_
   | Program     lhs.typeDiagnostics = []
   | Compiler    lhs.typeDiagnostics = []
@@ -32,72 +59,84 @@ sem Diag_
   | Platform    lhs.typeDiagnostics = []
   | Interpreter lhs.typeDiagnostics = []
       
-  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ tcExecute @lhs.pos @d1.isWrittenInLanguage @d2.canExecuteLanguage
-  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ tcCompile @lhs.pos @d1.isWrittenInLanguage (fmap fst @d2.canCompileLanguage)
+  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @d1.diagType @d2.diagType)
+  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @d1.diagType @d2.diagType)
 
 sem Diag_
-  | Program     lhs.canExecuteLanguage = Nothing
-  | Compiler    lhs.canExecuteLanguage = Nothing
+  | Program     loc.canExecuteLanguage = Nothing
+  | Compiler    loc.canExecuteLanguage = Nothing
   
-  | Platform    lhs.canExecuteLanguage = Just @m
-  | Interpreter lhs.canExecuteLanguage = Just @l
+  | Platform    loc.canExecuteLanguage = Just @m
+  | Interpreter loc.canExecuteLanguage = Just @l
       
-  | Execute     lhs.canExecuteLanguage = @d1.canExecuteLanguage
-  | Compile     lhs.canExecuteLanguage = @d1.canExecuteLanguage
+  | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
+  | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
 
 sem Diag_
-  | Program     lhs.canCompileLanguage = Nothing
-  | Compiler    lhs.canCompileLanguage = Just (@l1, @l2)
+  | Program     loc.canCompileLanguage = Nothing
+  | Compiler    loc.canCompileLanguage = Just (@l1, @l2)
   
-  | Platform    lhs.canCompileLanguage = Nothing
-  | Interpreter lhs.canCompileLanguage = Nothing
+  | Platform    loc.canCompileLanguage = Nothing
+  | Interpreter loc.canCompileLanguage = Nothing
       
-  | Execute     lhs.canCompileLanguage = @d1.canCompileLanguage
-  | Compile     lhs.canCompileLanguage = @d1.canCompileLanguage
+  | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
+  | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
   
 sem Diag_
-  | Program     lhs.isWrittenInLanguage = Just @l
-  | Compiler    lhs.isWrittenInLanguage = Just @m
+  | Program     loc.implementationLanguage = Just @l
+  | Compiler    loc.implementationLanguage = Just @m
   
-  | Platform    lhs.isWrittenInLanguage = Nothing
-  | Interpreter lhs.isWrittenInLanguage = Just @m
+  | Platform    loc.implementationLanguage = Nothing
+  | Interpreter loc.implementationLanguage = Just @m
       
-  | Execute     lhs.isWrittenInLanguage = @d2.isWrittenInLanguage
-  | Compile     lhs.isWrittenInLanguage = fmap snd @d2.canCompileLanguage
-                                            
+  | Execute     loc.implementationLanguage = @d2.implementationLanguage
+  | Compile     loc.implementationLanguage = fmap snd @d2.canCompileLanguage
+
 sem Diag
   | Diag      lhs.typeDiagnostics     = @d.typeDiagnostics
-  | Diag      lhs.isWrittenInLanguage = @d.isWrittenInLanguage
+  | Diag      lhs.implementationLanguage = @d.implementationLanguage
   | Diag      lhs.canExecuteLanguage  = @d.canExecuteLanguage
   | Diag      lhs.canCompileLanguage  = @d.canCompileLanguage
 
   | Diag      d.pos                   = @pos
-  
+
 {
+checkTyExecute :: SourcePos -> DiagType -> DiagType -> [Diagnostic]
+checkTyExecute pos d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
+checkTyExecute pos d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos d1 $ "Execute: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the execution language '" ++ l2 ++ "' of the second diagram." ]
+checkTyExecute pos d1 d2                      | Just l1 <- getImplementationLanguage d1            = [TyError pos d2 $ "Execute: The second diagram is not a valid execution unit for the language '" ++ l1 ++ "'."]
+checkTyExecute pos d1 d2                      | Nothing <- getImplementationLanguage d1            = [TyError pos d1 $ "Execute: The first diagram is not executable."]
 
-tcCompile :: SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
-tcCompile = tcConnector "Compile"
+checkTyCompile :: SourcePos -> DiagType -> DiagType -> [Diagnostic]
+checkTyCompile pos d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
+checkTyCompile pos d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos d1 $ "Compile: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the compiler frontend language '" ++ l2 ++ "' of the second diagram." ]
+checkTyCompile pos d1 d2                        | Just l1 <- getImplementationLanguage d1            = [TyError pos d2 $ "Execute: The second diagram is not a valid compiler for the language '" ++ l1 ++ "'."]
+checkTyCompile pos d1 d2                        | Nothing <- getImplementationLanguage d1            = [TyError pos d1 $ "Execute: The first diagram is not compilable."]
+}
 
-tcExecute :: SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
-tcExecute = tcConnector "Execute"
-
-tcConnector :: String -> SourcePos -> Maybe Language -> Maybe Language -> [Diagnostic]
-tcConnector typ pos source target = 
-  let hasSourceLanguage = 
-        case source of
-          Nothing -> [(TyError pos $ typ ++ ": First diagram has missing implementation language.")]
-          _       -> []
+{
+replaceImplementationLanguage :: Maybe Language -> DiagType -> DiagType
+replaceImplementationLanguage l1@(Just _) (Type_Program     (Just _) ) = Type_Program     l1
+replaceImplementationLanguage l1@(Just _) (Type_Compiler l2 (Just _) ) = Type_Compiler l2 l1
+replaceImplementationLanguage l1@(Just _) (Type_Executor l2 (Just _) ) = Type_Executor l2 l1
+replaceImplementationLanguage _   _                                    = Type_Top
   
-      hasTargetLanguage = 
-        case target of
-          Nothing -> [(TyError pos $ typ ++ ": Second diagram is not a suitable target.")]
-          _       -> []
-          
-      sourceAndTargetLanguageMatch = 
-          case (source, target) of
-            (Just l1, Just l2 ) | l1 /= l2 -> [(TyError pos $ typ ++ ": Source language '" ++ l1 ++ "' does not match target language '" ++ l2 ++ "'")]
-            _                              -> []
-  in hasSourceLanguage ++ hasTargetLanguage ++ sourceAndTargetLanguageMatch
+getImplementationLanguage :: DiagType -> Maybe Language
+getImplementationLanguage (Type_Compiler _ x) = x
+getImplementationLanguage (Type_Executor _ x) = x
+getImplementationLanguage (Type_Program    x) = x
+getImplementationLanguage _                   = Nothing
+
+mkCompilerType :: Maybe Language -> Maybe SourceAndTargetLanguage -> DiagType
+mkCompilerType m (Just l12) = Type_Compiler l12 m
+mkCompilerType _ Nothing    = Type_Top
+
+mkExecutorType :: Maybe Language -> Maybe Language -> DiagType
+mkExecutorType l2 (Just l1) = Type_Executor l1 l2
+mkExecutorType _  Nothing   = Type_Top
+
+mkProgramType :: Maybe Language -> DiagType
+mkProgramType m = Type_Program m
 }
 
   

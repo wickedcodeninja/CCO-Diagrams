@@ -1,0 +1,13 @@
+execute
+  execute
+    compile
+      program hello in UUAG
+    with
+      compiler uuagc from UUAG to Haskell in i686-windows
+    end
+  on
+    interpreter hugs for Clean in i686-windows
+  end 
+on
+  interpreter VMWare for i686-windows in i686-linux
+end

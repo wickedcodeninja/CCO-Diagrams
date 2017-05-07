@@ -18,12 +18,12 @@ typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \diag -> 
   let msgs = getTypeDiagnostics diag
       
-      isError (TyError _ _) = True
-      isError (Warning _ _) = False
+      isError (TyError _ _ _) = True
+      isError (Warning _ _)   = False
       
       (errors, warnings) =  partition isError msgs
      
-      extractWarning (TyError _ _)     = Nothing
+      extractWarning (TyError _ _ _)   = Nothing
       extractWarning (Warning pos msg) = Just msg
      
   in do () <- traverse_ warn_ . mapMaybe extractWarning $ warnings
@@ -33,13 +33,12 @@ typeCheckDiag = component $ \diag ->
           (err:_) -> errorMessage . ppDiagnostic $ err
 
 ppDiagnostic :: Diagnostic -> Doc
-ppDiagnostic (TyError pos descr)
-  = above [ppHeader, text " ", ppExpected, ppInferred]
+ppDiagnostic (TyError pos inferred descr)
+  = above [ppHeader, text " ", ppInferred]
   where
     ppHeader   = wrapped $
-                 describeSourcePos pos ++ ": Type error: " ++ descr ++ "."
-    ppExpected = text "? expected : " >|< showable "<TODO>"
-    ppInferred = text "? inferred : " >|< showable "<TODO>"
+                 describeSourcePos pos ++ ": Type error: " ++ descr
+    ppInferred = text "? inferred type: " >|< showable inferred
     
           
 -- NOTE: This function was verbatimly stolen from the ArithBool example in the uu-cco-examples package.
