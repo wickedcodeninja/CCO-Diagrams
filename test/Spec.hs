@@ -7,18 +7,26 @@ import Control.Arrow ((>>>), arr)
 import Data.List
 import Data.List.Split
 import Data.Char
+import System.Process
 
 sp = SourcePos Stdin EOF
 
 replace old new = intercalate new . splitOn old
 
-test d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) d
-              replace ".0" "" a `shouldBe` filter (not . isSpace) t
+generate_tex name text = do writeFile (name++".tex") ("\\documentclass{article}\\begin{document}" ++ text ++ "\\end{document}")
+                            createProcess (proc "pdflatex" [name++".tex"])
+
+test n d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) d
+                generate_tex n a
+                replace ".0" "" a `shouldBe` filter (not . isSpace) t
+
 dprog = Diag sp (Program "hello" "Haskell")
 
 dplat = Diag sp (Platform "i686-windows")
 
 dint = Diag sp (Interpreter "hugs" "Haskell"  "i686-windows")
+
+dcomp = Diag sp (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
 
 main :: IO ()
 main = hspec $ do
@@ -35,7 +43,7 @@ main = hspec $ do
               \  \\put(7.5,0){\\makebox(50,15){Haskell}}\
               \\\end{picture}"
 
-       in test dprog t
+       in test "prog" dprog t
 
   it "Platform" $ do
      let t = "\\begin{picture}(50,30) \
@@ -46,11 +54,10 @@ main = hspec $ do
               \ \\put(50,30){\\line(0,-1){15}}\
               \ \\put(0,15){\\makebox(50,15){i686-windows}}\
               \ \\end{picture}"
-      in test dplat t
+      in test "plat" dplat t
 
   it "Compiler" $ do
-    let d = Diag sp (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
-        t = "\\begin{picture}(150,30)\
+    let t = "\\begin{picture}(150,30)\
              \ \\put(50,0){\\line(0,1){20}}\
              \ \\put(50,20){\\line(-1,0){50}}\
              \ \\put(0,20){\\line(0,1){10}}\
@@ -65,7 +72,7 @@ main = hspec $ do
              \ \\put(50,10){\\makebox(50,10){uuagc}}\
              \ \\put(50,0){ \\makebox(50,10){i686-windows}}\
              \ \\end{picture}"
-     in test d t
+     in test "comp" dcomp t
 
   it "Interpreter" $ do
     let t = "\\begin{picture}(50,30)\
@@ -74,7 +81,7 @@ main = hspec $ do
              \ \\put(0,10){\\makebox(50,10){hugs}}\
              \ \\put(0,0){\\makebox(50,10){i686-windows}}\
              \ \\end{picture}"
-     in test dint t
+     in test "int" dint t
 
   it "Execute Program on Interpreter" $ do
     let d = Diag sp (Execute dprog dint)
@@ -92,4 +99,40 @@ main = hspec $ do
              \ \\put(7.5,10){\\makebox(50,10){hugs}}\
              \ \\put(7.5,0){\\makebox(50,10){i686-windows}}\
              \\\end{picture}"
-     in test d t
+     in test "exe_proc_int" d t
+
+  it "Compile Program on compiler" $ do
+    let d = Diag sp (Compile (Diag sp (Program "Haskell" "UUAG")) dcomp)
+    -- NOTE: width is 50 instead of 45. This seems to be wrong in the examples
+        t = "\\begin{picture}(265,50)\ 
+             \ \\put(7.5,20){\\line(1,0){50}}\
+             \ \\put(7.5,20){\\line(0,1){15}}\
+             \ \\put(7.5,35){\\line(-1,2){7.5}}\
+             \ \\put(57.5,35){\\line(1,2){7.5}}\
+             \ \\put(57.5,20){\\line(0,1){15}}\
+             \ \\put(0,50){\\line(1,0){65}}\
+             \ \\put(7.5,35){\\makebox(50,15){hello}}\
+             \ \\put(7.5,20){\\makebox(50,15){UUAG}}\
+             \ \\put(107.5,0){\\line(0,1){20}}\
+             \ \\put(107.5,20){\\line(-1,0){50}}\
+             \ \\put(57.5,20){\\line(0,1){10}}\
+             \ \\put(57.5,30){\\line(1,0){150}}\
+             \ \\put(207.5,30){\\line(0,-1){10}}\
+             \ \\put(207.5,20){\\line(-1,0){50}}\
+             \ \\put(157.5,20){\\line(0,-1){20}}\
+             \ \\put(157.5,0){\\line(-1,0){50}}\
+             \ \\put(57.5,20){\\makebox(50,10){UUAG}}\
+             \ \\put(107.5,20){\\makebox(50,10){$\\longrightarrow$}}\
+             \ \\put(157.5,20){\\makebox(50,10){Haskell}}\
+             \ \\put(107.5,10){\\makebox(50,10){uuagc}}\
+             \ \\put(107.5,0){\\makebox(50,10){i686-windows}}\
+             \ \\put(207.5,20){\\line(1,0){50}}\
+             \ \\put(207.5,20){\\line(0,1){15}}\
+             \ \\put(207.5,35){\\line(-1,2){7.5}}\
+             \ \\put(257.5,35){\\line(1,2){7.5}}\
+             \ \\put(257.5,20){\\line(0,1){15}}\
+             \ \\put(200,50){\\line(1,0){65}}\
+             \ \\put(207.5,35){\\makebox(50,15){hello}}\
+             \ \\put(207.5,20){\\makebox(50,15){Haskell}}\
+             \ \\end{picture}"
+      in test "comp_prog_comp" d t

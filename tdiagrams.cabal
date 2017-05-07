@@ -51,4 +51,4 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs: test, src
   other-modules: CCO.D2P, CCO.Diag.AG, CCO.Diag.Base, CCO.Picture, CCO.Picture.AG
-  build-depends:      base, hspec, uu-cco, parsec, split
+  build-depends:      base, hspec, uu-cco, parsec, split, process
