@@ -21,13 +21,18 @@ typeCheckDiag = component $ \diag ->
     (err:_) -> errorMessage . ppDiagnostic $ err
 
 ppDiagnostic :: Diagnostic -> Doc
-ppDiagnostic (TyError pos inferred descr)
-  = above [ppHeader, text " ", ppInferred]
+ppDiagnostic (TyError pos env inferred descr) = above [ppHeader, text " ", ppInferred, ppRelevant]
   where
     ppHeader   = wrapped $
                  describeSourcePos pos ++ ": Type error: " ++ descr
-    ppInferred = text "? inferred type: " >|< showable inferred
-    
+    ppInferred = text "? Inferred type: " >|< showable inferred
+    ppRelevant = text "? Relevant bindings: " >|< showable env
+ppDiagnostic (ScopeError pos env descr) = above [ppHeader, text " ", ppInferred]
+  where
+    ppHeader   = wrapped $
+                 describeSourcePos pos ++ ": Scope error: " ++ descr
+    ppInferred = text "? Relevant bindings: " >|< showable env
+
           
 -- NOTE: This function was verbatimly stolen from the ArithBool example in the uu-cco-examples package.
 describeSourcePos :: SourcePos -> String

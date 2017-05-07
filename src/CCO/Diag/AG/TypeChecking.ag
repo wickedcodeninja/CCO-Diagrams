@@ -18,8 +18,11 @@ type Platform = String
 
 type SourceAndTargetLanguage = (Language, Language)
 
+type DiagTypeEnvironment = [(String, DiagType)]
+
 data Diagnostic 
-  = TyError SourcePos DiagType String
+  = TyError    SourcePos DiagTypeEnvironment DiagType String
+  | ScopeError SourcePos DiagTypeEnvironment          String
 
 type Implementation = Either Platform Language
   
@@ -40,12 +43,14 @@ instance Show DiagType where
 }
 
 attr Diag Diag_
-  syn   diagType :: { DiagType }
-  syn   typeDiagnostics :: { [Diagnostic] }
+  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+
+attr Diag Diag_
+  syn   diagType               :: { DiagType }
   syn   implementationLanguage :: { Either Platform Language }
-  syn   canExecuteLanguage  :: { Maybe Language }
-  syn   canCompileLanguage  :: { Maybe SourceAndTargetLanguage }
- 
+  syn   canExecuteLanguage     :: { Maybe Language }
+  syn   canCompileLanguage     :: { Maybe SourceAndTargetLanguage }
+  
 attr Diag_ 
   inh   pos :: { SourcePos }
 
@@ -59,7 +64,9 @@ sem Diag_
   | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
   | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
 
-  | Use         lhs.diagType = undefined -- TODO: Lookup the diagram in the typed environment
+  | Use         lhs.diagType = case (lookup @name @lhs.diagTypeList) of
+                                Just typ -> typ
+                                Nothing  -> Type_Top
   | Let         lhs.diagType = @d.diagType
   
 sem Diag_
@@ -69,11 +76,11 @@ sem Diag_
   | Platform    lhs.typeDiagnostics = []
   | Interpreter lhs.typeDiagnostics = []
       
-  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @d1.diagType @d2.diagType)
-  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @d1.diagType @d2.diagType)
+  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
+  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
 
-  | Use         lhs.typeDiagnostics = undefined -- TODO: Check if referred diagram exists in the typed environment
-  | Let         lhs.typeDiagnostics = @d.typeDiagnostics -- TODO: collect diagnostics from the `binds`
+  | Use         lhs.typeDiagnostics = checkTyUse @lhs.pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList)
+  | Let         lhs.typeDiagnostics = @binds.typeDiagnostics ++ @d.typeDiagnostics
   
 sem Diag_
   | Program     loc.canExecuteLanguage = Nothing
@@ -85,7 +92,7 @@ sem Diag_
   | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
   | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
 
-  | Use         lhs.canExecuteLanguage = undefined -- TODO: Lookup this property in the environment
+  | Use         lhs.canExecuteLanguage = fromJust (lookup @name @lhs.canExecuteLanguageList)
   | Let         lhs.canExecuteLanguage = @d.canExecuteLanguage
   
 sem Diag_
@@ -98,7 +105,7 @@ sem Diag_
   | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
   | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
   
-  | Use         lhs.canCompileLanguage = undefined -- TODO: Lookup this property in the environment
+  | Use         lhs.canCompileLanguage = fromJust (lookup @name @lhs.canCompileLanguageList)
   | Let         lhs.canCompileLanguage = @d.canCompileLanguage
   
 sem Diag_
@@ -112,30 +119,63 @@ sem Diag_
   | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
                                                Just (l1, l2) -> Right l2
                                                Nothing       -> Left "invalid"
-  | Use         lhs.implementationLanguage = undefined -- TODO: Lookup this property in the environment
-  | Let         lhs.implementationLanguage = @d.implementationLanguage
-
                                                
+  | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
+  | Let         lhs.implementationLanguage = @d.implementationLanguage
+                                        
 sem Diag
   | Diag      lhs.typeDiagnostics        = @d.typeDiagnostics
   | Diag      lhs.implementationLanguage = @d.implementationLanguage
   | Diag      lhs.canExecuteLanguage     = @d.canExecuteLanguage
   | Diag      lhs.canCompileLanguage     = @d.canCompileLanguage
 
-  | Diag      d.pos                      = @pos
+  | Diag      d.pos                       = @pos
+  
+  
+  
+attr DiagBinds
+  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+attr Diag Diag_ DiagBinds
+  inh   diagTypeList                :: { [(String, (DiagType)                     )] }
+  inh   implementationLanguageList  :: { [(String, (Either Platform Language)     )] }
+  inh   canExecuteLanguageList      :: { [(String, (Maybe Language)               )] }
+  inh   canCompileLanguageList      :: { [(String, (Maybe SourceAndTargetLanguage))] }
+attr DiagBinds
+  syn   diagTypeList               use {++} { [] } :: { [(String, (DiagType)                     )] }
+  syn   implementationLanguageList use {++} { [] } :: { [(String, (Either Platform Language)     )] }
+  syn   canExecuteLanguageList     use {++} { [] } :: { [(String, (Maybe Language)               )] }
+  syn   canCompileLanguageList     use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
 
+ 
+sem DiagBinds
+  | BindCons    lhs.typeDiagnostics = @d.typeDiagnostics ++ @ds.typeDiagnostics
+  
+                lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
+                lhs.implementationLanguageList = (@name, @d.implementationLanguage) : @ds.implementationLanguageList
+                lhs.canExecuteLanguageList     = (@name, @d.canExecuteLanguage)     : @ds.canExecuteLanguageList
+                lhs.canCompileLanguageList     = (@name, @d.canCompileLanguage)     : @ds.canCompileLanguageList
+sem Diag_
+  | Let         d.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
+                d.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
+                d.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
+                d.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
+                
 {
-checkTyExecute :: SourcePos -> DiagType -> DiagType -> [Diagnostic]
-checkTyExecute pos d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
-checkTyExecute pos d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos d1 $ "Execute: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the execution language '" ++ l2 ++ "' of the second diagram." ]
-checkTyExecute pos d1 d2                      | Just l1 <- getImplementationLanguage d1            = [TyError pos d2 $ "Execute: The second diagram is not a valid execution unit for the language '" ++ l1 ++ "'."]
-checkTyExecute pos d1 d2                      | Nothing <- getImplementationLanguage d1            = [TyError pos d1 $ "Execute: The first diagram is not executable."]
+checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyExecute pos env d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
+checkTyExecute pos env d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos env d1 $ "/Execute/: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the execution language '" ++ l2 ++ "' of the second diagram." ]
+checkTyExecute pos env d1 d2                      | Just l1 <- getImplementationLanguage d1            = [TyError pos env d2 $ "/Execute/: The second diagram is not a valid execution unit for the language '" ++ l1 ++ "'."]
+checkTyExecute pos env d1 d2                      | Nothing <- getImplementationLanguage d1            = [TyError pos env d1 $ "/Execute/: The first diagram is not executable."]
 
-checkTyCompile :: SourcePos -> DiagType -> DiagType -> [Diagnostic]
-checkTyCompile pos d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
-checkTyCompile pos d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos d1 $ "Compile: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the compiler frontend language '" ++ l2 ++ "' of the second diagram." ]
-checkTyCompile pos d1 d2                        | Just l1 <- getImplementationLanguage d1            = [TyError pos d2 $ "Execute: The second diagram is not a valid compiler for the language '" ++ l1 ++ "'."]
-checkTyCompile pos d1 d2                        | Nothing <- getImplementationLanguage d1            = [TyError pos d1 $ "Execute: The first diagram is not compilable."]
+checkTyCompile :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyCompile pos env d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
+checkTyCompile pos env d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos env d1 $ "/Compile/: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the compiler frontend language '" ++ l2 ++ "' of the second diagram." ]
+checkTyCompile pos env d1 d2                        | Just l1 <- getImplementationLanguage d1            = [TyError pos env d2 $ "/Compile/: The second diagram is not a valid compiler for the language '" ++ l1 ++ "'."]
+checkTyCompile pos env d1 d2                        | Nothing <- getImplementationLanguage d1            = [TyError pos env d1 $ "/Compile/: The first diagram is not compilable."]
+
+checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [Diagnostic]
+checkTyUse pos env name (Just typ) = []
+checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" ++ name ++ "' is not in scope."] 
 }
 
 {
@@ -166,5 +206,5 @@ mkProgramType m = Type_Program m
   
 {
 getTypeDiagnostics :: Diag -> [Diagnostic]
-getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) Inh_Diag)
+getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) (Inh_Diag [] [] [] []))
 }

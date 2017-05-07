@@ -1,0 +1,24 @@
+let 
+[ myLinux = platform i686-linux
+, myCompiler = compiler uuagc from UUAG to Haskell in i686-windows 
+] in 
+execute
+  let
+  [ myCompiler = compiler java from Java to Haskell in i686-windows
+  ] in 
+  execute
+    execute
+      compile
+        program hello in UUAG
+      with
+        use myCompiler
+      end
+    on
+      interpreter hugs for Haskell in i686-windows
+    end 
+  on
+    interpreter VMWare for i686-windows in i686-linux
+  end
+on
+  use myLinux
+end
