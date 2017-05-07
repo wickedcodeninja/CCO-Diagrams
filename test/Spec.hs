@@ -102,7 +102,7 @@ main = hspec $ do
      in test "exe_proc_int" d t
 
   it "Compile Program on compiler" $ do
-    let d = Diag sp (Compile (Diag sp (Program "Haskell" "UUAG")) dcomp)
+    let d = Diag sp (Compile (Diag sp (Program "hello" "UUAG")) dcomp)
     -- NOTE: width is 50 instead of 45. This seems to be wrong in the examples
         t = "\\begin{picture}(265,50)\ 
              \ \\put(7.5,20){\\line(1,0){50}}\
