@@ -15,6 +15,7 @@ attr Diag_ Diag
   inh offset :: Double
   syn pic :: Commands
   syn coords :: Coords
+  syn name :: String
 
 attr Root
   syn pic :: {Picture}
@@ -30,6 +31,7 @@ sem Diag | Diag lhs.pic = @d.pic
                 lhs.coords = @d.coords
                 d.bottom_left = @lhs.bottom_left
                 d.right = @lhs.right
+                lhs.name = @d.name
 
 sem Diag_
   | Program lhs.pic = mkProgram (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @p @l
@@ -37,18 +39,22 @@ sem Diag_
             loc.right = @loc.max_right - 7.5
             loc.bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
             lhs.coords = Coords @loc.bottom_left @loc.right @loc.max_right (snd @loc.bottom_left, snd @loc.bottom_left + 30)
+            lhs.name = @p
   | Platform lhs.pic = mkPlatform (fst @lhs.bottom_left, snd @lhs.bottom_left + @lhs.offset) @m
              loc.right = fst @lhs.bottom_left + 50
              lhs.coords = Coords (fst @lhs.bottom_left + 25, snd @lhs.bottom_left - 30) @loc.right @loc.right (snd @lhs.bottom_left - 30,snd @lhs.bottom_left)
+             lhs.name = @m
   | Interpreter lhs.pic = mkInterpreter (@loc.left,snd @lhs.bottom_left + @lhs.offset) @i @l @m
              loc.left = fst @lhs.bottom_left
              loc.right = @loc.left + 50
              loc.bottom_left_y = snd @lhs.bottom_left - 30
              lhs.coords = Coords (fst @lhs.bottom_left, @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left)
+             lhs.name = @i
   | Compiler lhs.pic = mkCompiler (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @c @l1 @l2 @m
              loc.right = @lhs.right + 150
              loc.bottom_left_y = snd @lhs.bottom_left - 20
              lhs.coords = Coords (@lhs.right+50 , @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left + 10)
+             lhs.name = @l2
   | Execute lhs.pic = @d1.pic ++ @d2.pic
      d1.bottom_left = @lhs.bottom_left
      d1.right = @lhs.right
@@ -58,8 +64,9 @@ sem Diag_
      loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
      loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
      lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
+     lhs.name = @d2.name
   | Compile lhs.pic = @d1.pic ++ @d2.pic  ++ pic_Syn_Diag_ @loc.d3
-            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program "hello" "Haskell")) (Inh_Diag_ @loc.bottom_left_d3 @lhs.offset (right @d2.coords - 7.5)))
+            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ @loc.bottom_left_d3 @lhs.offset (right @d2.coords - 7.5)))
             d1.offset = @lhs.offset
             d1.bottom_left = @lhs.bottom_left
             d1.right = @lhs.right
@@ -72,6 +79,7 @@ sem Diag_
             loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
             loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
             lhs.coords = Coords @loc.bottom_left (right @loc.coords_d3) (max_right @loc.coords_d3) (@loc.ymin, @loc.ymax)
+            lhs.name = name_Syn_Diag_ @loc.d3
 
 {
 mkProgram :: (Double, Double) -> String -> String -> Commands
@@ -120,15 +128,6 @@ mkCompiler (x,y) c l1 l2 m = [
                               Put (x+50,y-20+10) (Makebox (50,10) c),
                               Put (x+50,y-20+0) (Makebox (50,10) m)
                              ]
-
-blaname :: Diag -> String
-blaname (Diag sp d) = blaname' d
-
-blaname' :: Diag_ -> String
-blaname' (Program a b) = a
-blaname' (Compiler c l1 l2 m) = l2
-blaname' _ = ""
-
 }
 
 {
