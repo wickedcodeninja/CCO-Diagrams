@@ -155,10 +155,10 @@ sem DiagBinds
                 lhs.canExecuteLanguageList     = (@name, @d.canExecuteLanguage)     : @ds.canExecuteLanguageList
                 lhs.canCompileLanguageList     = (@name, @d.canCompileLanguage)     : @ds.canCompileLanguageList
 sem Diag_
-  | Let         d.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
-                d.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
-                d.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
-                d.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
+  | Let         loc.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
+                loc.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
+                loc.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
+                loc.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
                 
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]

@@ -1,0 +1,30 @@
+let 
+[ myLinux = platform i686-linux
+, myFirstExecutionStep =
+    execute
+      use myCompileStep
+    on
+      use myFirstInterpreter
+    end
+, myCompileStep =
+    compile
+        use myProgram
+      with
+        use myCompiler
+      end
+, mySecondExecutionStep = 
+    execute
+      use myFirstExecutionStep
+    on
+      use mySecondInterpreter
+    end
+, myCompiler = compiler java from UUAG to Haskell in i686-windows
+, myFirstInterpreter = interpreter hugs for Haskell in i686-windows
+, mySecondInterpreter = interpreter VMWare for i686-windows in i686-linux
+, myProgram = program hello in UUAG
+] in 
+execute
+  use mySecondExecutionStep
+on
+  use myLinux
+end
