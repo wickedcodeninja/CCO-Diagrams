@@ -19,7 +19,7 @@ module CCO.Diag.Parser (
 
 import CCO.Component                 (Component)
 import qualified CCO.Component as C  (parser)
-import CCO.Diag.Base                 (Diag (Diag), Diag_ (..), DiagBinds (..))
+import CCO.Diag.Base                 (Diag (..), Diag_ (..), DiagBinds (..))
 import CCO.Diag.Lexer                (Token, lexer, keyword, ident)
 import CCO.Parsing                   (Parser, eof, sourcePos, (<!>), manySepBy)
 import Control.Applicative
@@ -39,14 +39,35 @@ type TokenParser = Parser Token
 parser :: Component String Diag
 parser = C.parser lexer (pDiag <* eof)
 
--- | Parses a 'Diag'.
 pDiag :: TokenParser Diag
-pDiag = Diag <$> sourcePos <*> pDiag_
+pDiag = pPlain <|> pLet <|> pUse
+
+-- | Parses a 'Diag'.
+pPlain :: TokenParser Diag
+pPlain = Diag <$> sourcePos <*> pure BindNil <*> pDiag_
+
+-- | Parses a 'Use'.
+pUse :: TokenParser Diag
+pUse = Use <$> sourcePos <* keyword "use" <*> ident  
+                      
+-- | Parses a 'Let'.
+pLet :: TokenParser Diag
+pLet = Diag <$> sourcePos <* keyword "let" <*> pBinds <*
+               keyword "in" <*> pDiag_
+-- | Parses a 'Let'.
+pBinds :: TokenParser DiagBinds
+pBinds = createBinds <$ keyword "[" <*> manySepBy (keyword ",") pBind <* keyword "]"
+  where
+    createBinds []               = BindNil
+    createBinds ( (name, d):ds ) = BindCons name d (createBinds ds)
+    
+pBind :: TokenParser (String, Diag)
+pBind = (\name d -> (name, d)) <$> ident <* keyword "=" <*> pDiag 
 
 -- | Parses a 'Diag_'.
 pDiag_ :: TokenParser Diag_
 pDiag_ = pProgram <|> pPlatform <|> pInterpreter <|> pCompiler <|>
-         pExecute <|> pUse <|> pLet <|> pCompile <!>
+         pExecute <|> pCompile <!>
          "diagram"
 
 -- | Parses a 'Program'.
@@ -82,22 +103,3 @@ pCompile :: TokenParser Diag_
 pCompile = Compile <$ keyword "compile" <*> pDiag <*
                       keyword "with"    <*> pDiag <*
                       keyword "end"
-
--- | Parses a 'Use'.
-pUse :: TokenParser Diag_
-pUse = Use <$ keyword "use" <*> ident  
-                      
--- | Parses a 'Let'.
-pLet :: TokenParser Diag_
-pLet = Let <$ keyword "let" <*> pBinds <*
-              keyword "in" <*> pDiag
-    
--- | Parses a 'Let'.
-pBinds :: TokenParser DiagBinds
-pBinds = createBinds <$ keyword "[" <*> manySepBy (keyword ",") pBind <* keyword "]"
-  where
-    createBinds []               = BindNil
-    createBinds ( (name, d):ds ) = BindCons name d (createBinds ds)
-    
-pBind :: TokenParser (String, Diag)
-pBind = (\name d -> (name, d)) <$> ident <* keyword "=" <*> pDiag 

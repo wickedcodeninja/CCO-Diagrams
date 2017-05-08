@@ -15,7 +15,7 @@
 module CCO.Diag.Base (
     -- * Syntax
     Ident
-  , Diag (Diag)    -- instances: Tree
+  , Diag (..)      -- instances: Tree
   , Diag_ (..)     -- instances: Tree
   , DiagBinds (..) -- instances: Tree
 ) where

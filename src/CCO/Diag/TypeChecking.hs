@@ -16,9 +16,9 @@ import System.IO
 
 typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \diag -> 
-  case getTypeDiagnostics diag of
-    []      -> pure diag
-    (err:_) -> errorMessage . ppDiagnostic $ err
+  case checkDiagram diag of
+    (Just checkedDiag, []     ) -> pure checkedDiag
+    (_               , (err:_)) -> errorMessage . ppDiagnostic $ err
 
 ppDiagnostic :: Diagnostic -> Doc
 ppDiagnostic (TyError pos env inferred descr) = above [ppHeader, text " ", ppInferred, ppRelevant]

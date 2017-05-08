@@ -42,45 +42,19 @@ instance Show DiagType where
   show (Type_Executor l1       (Left  _))  = "Executor {!" ++ l1 ++ "!}" 
 }
 
-attr Diag Diag_
-  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
-
-attr Diag Diag_
-  syn   diagType               :: { DiagType }
-  syn   implementationLanguage :: { Either Platform Language }
-  syn   canExecuteLanguage     :: { Maybe Language }
-  syn   canCompileLanguage     :: { Maybe SourceAndTargetLanguage }
+-- Position Information
   
 attr Diag_ 
   inh   pos :: { SourcePos }
+sem Diag
+  | Diag        d.pos = @pos
 
-sem Diag_
-  | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
-  | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
+-- Semantics
   
-  | Platform    lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
-  | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
-      
-  | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
-  | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
-
-  | Use         lhs.diagType = case (lookup @name @lhs.diagTypeList) of
-                                Just typ -> typ
-                                Nothing  -> Type_Top
-  | Let         lhs.diagType = @d.diagType
-  
-sem Diag_
-  | Program     lhs.typeDiagnostics = []
-  | Compiler    lhs.typeDiagnostics = []
-  
-  | Platform    lhs.typeDiagnostics = []
-  | Interpreter lhs.typeDiagnostics = []
-      
-  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
-  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
-
-  | Use         lhs.typeDiagnostics = checkTyUse @lhs.pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList)
-  | Let         lhs.typeDiagnostics = @binds.typeDiagnostics ++ @d.typeDiagnostics
+attr Diag Diag_
+  syn   implementationLanguage :: { Either Platform Language }
+  syn   canExecuteLanguage     :: { Maybe Language }
+  syn   canCompileLanguage     :: { Maybe SourceAndTargetLanguage }
   
 sem Diag_
   | Program     loc.canExecuteLanguage = Nothing
@@ -92,8 +66,8 @@ sem Diag_
   | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
   | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
 
+sem Diag
   | Use         lhs.canExecuteLanguage = fromJust (lookup @name @lhs.canExecuteLanguageList)
-  | Let         lhs.canExecuteLanguage = @d.canExecuteLanguage
   
 sem Diag_
   | Program     loc.canCompileLanguage = Nothing
@@ -105,8 +79,8 @@ sem Diag_
   | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
   | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
   
+sem Diag
   | Use         lhs.canCompileLanguage = fromJust (lookup @name @lhs.canCompileLanguageList)
-  | Let         lhs.canCompileLanguage = @d.canCompileLanguage
   
 sem Diag_
   | Program     loc.implementationLanguage = Right @l
@@ -119,19 +93,49 @@ sem Diag_
   | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
                                                Just (l1, l2) -> Right l2
                                                Nothing       -> Left "invalid"
-                                               
-  | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
-  | Let         lhs.implementationLanguage = @d.implementationLanguage
-                                        
 sem Diag
-  | Diag      lhs.typeDiagnostics        = @d.typeDiagnostics
-  | Diag      lhs.implementationLanguage = @d.implementationLanguage
-  | Diag      lhs.canExecuteLanguage     = @d.canExecuteLanguage
-  | Diag      lhs.canCompileLanguage     = @d.canCompileLanguage
+  | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
 
-  | Diag      d.pos                       = @pos
+
+
+-- Type Checking
+
+attr Diag Diag_
+  syn   diagType                        :: { DiagType }
+  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+
+sem Diag_
+  | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
+  | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
   
+  | Platform    lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+  | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+      
+  | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
+  | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
+
+sem Diag
+  | Use         lhs.diagType = case (lookup @name @lhs.diagTypeList) of
+                                Just typ -> typ
+                                Nothing  -> Type_Top
+
+sem Diag_
+  | Program     lhs.typeDiagnostics = []
+  | Compiler    lhs.typeDiagnostics = []
   
+  | Platform    lhs.typeDiagnostics = []
+  | Interpreter lhs.typeDiagnostics = []
+      
+  | Execute     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyExecute @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
+  | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType)
+
+sem Diag
+  | Use         lhs.typeDiagnostics = checkTyUse @pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList)
+  | Diag        lhs.typeDiagnostics = @binds.typeDiagnostics ++ @d.typeDiagnostics
+
+
+
+-- Let bindings
   
 attr DiagBinds
   syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
@@ -146,20 +150,51 @@ attr DiagBinds
   syn   canExecuteLanguageList     use {++} { [] } :: { [(String, (Maybe Language)               )] }
   syn   canCompileLanguageList     use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
 
- 
 sem DiagBinds
-  | BindCons    lhs.typeDiagnostics = @d.typeDiagnostics ++ @ds.typeDiagnostics
-  
-                lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
+  | BindCons    lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
                 lhs.implementationLanguageList = (@name, @d.implementationLanguage) : @ds.implementationLanguageList
                 lhs.canExecuteLanguageList     = (@name, @d.canExecuteLanguage)     : @ds.canExecuteLanguageList
                 lhs.canCompileLanguageList     = (@name, @d.canCompileLanguage)     : @ds.canCompileLanguageList
-sem Diag_
-  | Let         loc.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
+sem Diag
+  | Diag        loc.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
                 loc.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
                 loc.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
                 loc.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
-                
+
+
+
+-- Flattening
+
+attr Diag
+  syn   flattenedDiag                     :: { Diag }
+attr Diag Diag_
+  syn   flattenedDiag_                    :: { Diag_ }
+
+attr Diag Diag_ DiagBinds
+  inh   flattenedDiagList                 :: { [(String, Diag_)] }
+attr DiagBinds
+  syn   flattenedDiagList use {++} { [] } :: { [(String, Diag_)] }
+
+sem Diag
+  | Diag        lhs.flattenedDiag = Diag @pos BindNil $ @d.flattenedDiag_
+  | Use         lhs.flattenedDiag = Diag @pos BindNil $ @loc.flattenedDiag_
+                loc.flattenedDiag_ = fromJust (lookup @name @lhs.flattenedDiagList)
+sem Diag_
+  | Program     lhs.flattenedDiag_ = Program @p @l
+  | Platform    lhs.flattenedDiag_ = Platform @m
+  | Compiler    lhs.flattenedDiag_ = Compiler @c @l1 @l2 @m
+  | Interpreter lhs.flattenedDiag_ = Interpreter @i @l @m
+  | Execute     lhs.flattenedDiag_ = Execute @d1.flattenedDiag @d2.flattenedDiag
+  | Compile     lhs.flattenedDiag_ = Compile @d1.flattenedDiag @d2.flattenedDiag
+
+sem DiagBinds
+  | BindCons    lhs.flattenedDiagList = (@name, @d.flattenedDiag_) : @ds.flattenedDiagList
+
+sem Diag
+  | Diag        loc.flattenedDiagList = @binds.flattenedDiagList ++ @lhs.flattenedDiagList
+
+
+-- Type Checking Specific Diagrams
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
 checkTyExecute pos env d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
@@ -177,6 +212,8 @@ checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [D
 checkTyUse pos env name (Just typ) = []
 checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" ++ name ++ "' is not in scope."] 
 }
+
+
 
 {
 replaceImplementationLanguage :: Implementation -> DiagType -> DiagType
@@ -203,8 +240,14 @@ mkProgramType :: Implementation -> DiagType
 mkProgramType m = Type_Program m
 }
 
-  
+
+
 {
-getTypeDiagnostics :: Diag -> [Diagnostic]
-getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) empty_Diag)
+checkDiagram :: Diag -> (Maybe Diag, [Diagnostic])
+checkDiagram diag =
+  let semantics = sem_Diag diag
+      results = wrap_Diag semantics empty_Diag
+      diagnostics = typeDiagnostics_Syn_Diag results
+      flattenedDiag = flattenedDiag_Syn_Diag results
+  in (Just flattenedDiag, diagnostics)
 }
