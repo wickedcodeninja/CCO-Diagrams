@@ -20,11 +20,19 @@ attr Diag_ Diag
 attr Root
   syn pic :: {Picture}
 
+sem DiagBinds | BindCons d.bottom_left = (0,0)
+                         d.offset = 0
+                         d.right = 0
+
 sem Root | Root lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
                 loc.ysize = (snd . top) @d.coords - (fst . top) @d.coords
                 d.bottom_left = (0,0)
                 d.offset = (abs . fst . top) @d.coords
                 d.right = 0
+                d.canCompileLanguageList = []
+                d.canExecuteLanguageList = []
+                d.diagTypeList = []
+                d.implementationLanguageList = []
 
 sem Diag | Diag lhs.pic = @d.pic
                 d.offset = @lhs.offset
@@ -34,6 +42,15 @@ sem Diag | Diag lhs.pic = @d.pic
                 lhs.name = @d.name
 
 sem Diag_
+  | Let     lhs.pic = []
+            lhs.coords = Coords (0,0) 0 0 (0,0)
+            lhs.name = ""
+            d.bottom_left = (0,0)
+            d.offset = 0
+            d.right = 0
+  | Use     lhs.pic = []
+            lhs.coords = Coords (0,0) 0 0 (0,0)
+            lhs.name = ""
   | Program lhs.pic = mkProgram (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @p @l
             loc.max_right = @lhs.right + 65
             loc.right = @loc.max_right - 7.5
@@ -66,7 +83,9 @@ sem Diag_
      lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
      lhs.name = @d2.name
   | Compile lhs.pic = @d1.pic ++ @d2.pic  ++ pic_Syn_Diag_ @loc.d3
-            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ @loc.bottom_left_d3 @lhs.offset (right @d2.coords - 7.5)))
+            --loc.d3 = (wrap_Diag (sem_Diag (Program @d1.name @d2.name)) (Inh_Diag @loc.bottom_left_d3 @lhs.offset (right @d2.coords - 7.5)))
+            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ {pos_Inh_Diag_ = empty_sp, bottom_left_Inh_Diag_ = @loc.bottom_left_d3 , offset_Inh_Diag_ = @lhs.offset, right_Inh_Diag_ = (right @d2.coords - 7.5), canExecuteLanguageList_Inh_Diag_ = [], canCompileLanguageList_Inh_Diag_ = [], diagTypeList_Inh_Diag_ = [], implementationLanguageList_Inh_Diag_ = []}  ))
+            --loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ {}))
             d1.offset = @lhs.offset
             d1.bottom_left = @lhs.bottom_left
             d1.right = @lhs.right

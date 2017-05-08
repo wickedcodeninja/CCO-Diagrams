@@ -17,6 +17,7 @@ module CCO.Diag.Base (
     Ident
   , Diag (Diag)    -- instances: Tree
   , Diag_ (..)     -- instances: Tree
+  , DiagBinds (..) -- instances: Tree
 ) where
 
 import CCO.Diag.AG

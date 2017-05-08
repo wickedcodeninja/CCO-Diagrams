@@ -1,9 +1,9 @@
 imports
 {
-import CCO.SourcePos        (SourcePos)
 import CCO.Tree             (ATerm (App), Tree (fromTree, toTree))
 import CCO.Tree.Parser      (parseTree, app, arg)
 import Control.Applicative  (Applicative ((<*>)), (<$>))
+import CCO.SourcePos (SourcePos(..), Source(..), Pos(..))
 }
 
 -------------------------------------------------------------------------------
@@ -14,6 +14,10 @@ import Control.Applicative  (Applicative ((<*>)), (<$>))
 type Ident = String
 }
 
+data DiagBinds
+  | BindNil
+  | BindCons     name :: {String} d :: Diag      ds :: DiagBinds
+
 data Diag_
   | Program      p  :: {Ident}  l  :: {Ident}
   | Platform     m  :: {Ident}
@@ -21,10 +25,17 @@ data Diag_
   | Compiler     c  :: {Ident}  l1 :: {Ident}  l2 :: {Ident}  m :: {Ident}
   | Execute      d1 :: Diag     d2 :: Diag
   | Compile      d1 :: Diag     d2 :: Diag
-
+  | Let          binds :: DiagBinds d :: Diag
+  | Use          name :: {Ident}
+  
 data Diag
   | Diag  pos  :: {SourcePos}  d :: Diag_
 
+{
+empty_Diag = Inh_Diag {bottom_left_Inh_Diag = (0,0), offset_Inh_Diag = 0, right_Inh_Diag = 0, canExecuteLanguageList_Inh_Diag = [], canCompileLanguageList_Inh_Diag = [], diagTypeList_Inh_Diag = [], implementationLanguageList_Inh_Diag = []}  
+
+empty_sp = SourcePos Stdin EOF
+}
 -------------------------------------------------------------------------------
 -- Tree instances
 -------------------------------------------------------------------------------
@@ -43,7 +54,9 @@ instance Tree Diag_ where
     App "Compiler" [fromTree c, fromTree l1, fromTree l2, fromTree m]
   fromTree (Execute d1 d2)      = App "Execute" [fromTree d1, fromTree d2]
   fromTree (Compile d1 d2)      = App "Compile" [fromTree d1, fromTree d2]
-
+  fromTree (Let binds d)        = App "Let" [fromTree binds, fromTree d]
+  fromTree (Use name)           = App "Use" [fromTree name]
+  
   toTree = parseTree 
              [ app "Program"     (Program     <$> arg <*> arg                )
              , app "Platform"    (Platform    <$> arg                        )
@@ -51,5 +64,16 @@ instance Tree Diag_ where
              , app "Compiler"    (Compiler    <$> arg <*> arg <*> arg <*> arg)
              , app "Execute"     (Execute     <$> arg <*> arg                )
              , app "Compile"     (Compile     <$> arg <*> arg                )
+             , app "Let"         (Let         <$> arg <*> arg                )
+             , app "Use"         (Use         <$> arg                        )
+             ]
+             
+instance Tree DiagBinds where
+  fromTree BindNil              = App "BindNil" []
+  fromTree (BindCons name d ds) = App "BindCons" [fromTree name, fromTree d, fromTree ds]
+  
+  toTree = parseTree
+             [ app "BindNil"  (pure BindNil)
+             , app "BindCons" (BindCons <$> arg <*> arg <*> arg)
              ]
 }

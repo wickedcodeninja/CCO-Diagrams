@@ -19,9 +19,9 @@ module CCO.Diag.Parser (
 
 import CCO.Component                 (Component)
 import qualified CCO.Component as C  (parser)
-import CCO.Diag.Base                 (Diag (Diag), Diag_ (..))
+import CCO.Diag.Base                 (Diag (Diag), Diag_ (..), DiagBinds (..))
 import CCO.Diag.Lexer                (Token, lexer, keyword, ident)
-import CCO.Parsing                   (Parser, eof, sourcePos, (<!>))
+import CCO.Parsing                   (Parser, eof, sourcePos, (<!>), manySepBy)
 import Control.Applicative
 
 -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ pDiag = Diag <$> sourcePos <*> pDiag_
 -- | Parses a 'Diag_'.
 pDiag_ :: TokenParser Diag_
 pDiag_ = pProgram <|> pPlatform <|> pInterpreter <|> pCompiler <|>
-         pExecute <|> pCompile <!>
+         pExecute <|> pUse <|> pLet <|> pCompile <!>
          "diagram"
 
 -- | Parses a 'Program'.
@@ -82,3 +82,22 @@ pCompile :: TokenParser Diag_
 pCompile = Compile <$ keyword "compile" <*> pDiag <*
                       keyword "with"    <*> pDiag <*
                       keyword "end"
+
+-- | Parses a 'Use'.
+pUse :: TokenParser Diag_
+pUse = Use <$ keyword "use" <*> ident  
+                      
+-- | Parses a 'Let'.
+pLet :: TokenParser Diag_
+pLet = Let <$ keyword "let" <*> pBinds <*
+              keyword "in" <*> pDiag
+    
+-- | Parses a 'Let'.
+pBinds :: TokenParser DiagBinds
+pBinds = createBinds <$ keyword "[" <*> manySepBy (keyword ",") pBind <* keyword "]"
+  where
+    createBinds []               = BindNil
+    createBinds ( (name, d):ds ) = BindCons name d (createBinds ds)
+    
+pBind :: TokenParser (String, Diag)
+pBind = (\name d -> (name, d)) <$> ident <* keyword "=" <*> pDiag 
