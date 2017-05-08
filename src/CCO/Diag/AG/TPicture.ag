@@ -7,8 +7,6 @@ import CCO.Picture
 data Coords = Coords {bottom_left :: (Double, Double), right :: Double, max_right :: Double, top :: (Double, Double)}
 }
 
-data Root | Root d :: Diag
-
 attr Diag_ Diag DiagBinds
   inh right :: Double
   inh bottom_left :: {(Double, Double)}
@@ -19,10 +17,10 @@ attr Diag_ Diag
   syn coords :: Coords
   syn name :: String
 
-attr Root
+attr Diagram
   syn pic :: {Picture}
 
-sem Root | Root lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
+sem Diagram | Diagram lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
                 loc.ysize = (snd . top) @d.coords - (fst . top) @d.coords
                 d.bottom_left = (0,0)
                 d.offset = (abs . fst . top) @d.coords
@@ -68,9 +66,7 @@ sem Diag_
      lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
      lhs.name = @d2.name
   | Compile lhs.pic = @d1.pic ++ @d2.pic  ++ pic_Syn_Diag_ @loc.d3
-            --loc.d3 = (wrap_Diag (sem_Diag (Program @d1.name @d2.name)) (Inh_Diag @loc.bottom_left_d3 @lhs.offset (right @d2.coords - 7.5)))
-            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ {pos_Inh_Diag_ = empty_sp, bottom_left_Inh_Diag_ = @loc.bottom_left_d3 , offset_Inh_Diag_ = @lhs.offset, right_Inh_Diag_ = (right @d2.coords - 7.5), canExecuteLanguageList_Inh_Diag_ = [], canCompileLanguageList_Inh_Diag_ = [], diagTypeList_Inh_Diag_ = [], implementationLanguageList_Inh_Diag_ = [], flattenedDiagList_Inh_Diag_ = []}  ))
-            --loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (Inh_Diag_ {}))
+            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (empty_Diag_ {bottom_left_Inh_Diag_ = @loc.bottom_left_d3 , offset_Inh_Diag_ = @lhs.offset, right_Inh_Diag_ = (right @d2.coords - 7.5)}  ))
             d1.offset = @lhs.offset
             d1.bottom_left = @lhs.bottom_left
             d1.right = @lhs.right
@@ -134,8 +130,8 @@ mkCompiler (x,y) c l1 l2 m = [
                              ]
 }
 
-sem Root
-  | Root     d.canCompileLanguageList = []
+sem Diagram
+  | Diagram  d.canCompileLanguageList = []
              d.canExecuteLanguageList = []
              d.diagTypeList = []
              d.implementationLanguageList = []
@@ -150,6 +146,24 @@ sem Diag
              lhs.coords    = Coords (0,0) 0 0 (0,0)
 
 {
-pic_Root :: Root -> Picture
-pic_Root root = pic_Syn_Root (wrap_Root (sem_Root root) Inh_Root)
+renderDiagram :: Diagram -> Picture
+renderDiagram diagram = pic_Syn_Diagram (wrap_Diagram (sem_Diagram diagram) Inh_Diagram)
+}
+
+-- Fugliness Is Part of the job?
+{
+empty_Diag_ =
+  Inh_Diag_ {
+    pos_Inh_Diag_ = SourcePos Stdin EOF,
+  
+    bottom_left_Inh_Diag_ = (0,0), 
+    offset_Inh_Diag_ = 0, 
+    right_Inh_Diag_ = 0, 
+    
+    diagTypeList_Inh_Diag_ = [], 
+    canExecuteLanguageList_Inh_Diag_ = [], 
+    canCompileLanguageList_Inh_Diag_ = [], 
+    implementationLanguageList_Inh_Diag_ = [],
+    flattenedDiagList_Inh_Diag_ = []
+  }
 }

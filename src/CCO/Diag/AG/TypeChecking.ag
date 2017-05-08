@@ -100,9 +100,11 @@ sem Diag
 
 -- Type Checking
 
+attr Diag Diag_ DiagBinds Diagram
+  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+
 attr Diag Diag_
   syn   diagType                        :: { DiagType }
-  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
 
 sem Diag_
   | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
@@ -137,8 +139,6 @@ sem Diag
 
 -- Let bindings
   
-attr DiagBinds
-  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
 attr Diag Diag_ DiagBinds
   inh   diagTypeList                :: { [(String, (DiagType)                     )] }
   inh   implementationLanguageList  :: { [(String, (Either Platform Language)     )] }
@@ -165,7 +165,7 @@ sem Diag
 
 -- Flattening
 
-attr Diag
+attr Diagram Diag
   syn   flattenedDiag                     :: { Diag }
 attr Diag Diag_
   syn   flattenedDiag_                    :: { Diag_ }
@@ -243,11 +243,11 @@ mkProgramType m = Type_Program m
 
 
 {
-checkDiagram :: Diag -> (Maybe Diag, [Diagnostic])
-checkDiagram diag =
-  let semantics = sem_Diag diag
-      results = wrap_Diag semantics empty_Diag
-      diagnostics = typeDiagnostics_Syn_Diag results
-      flattenedDiag = flattenedDiag_Syn_Diag results
+checkDiagram :: Diagram -> (Maybe Diag, [Diagnostic])
+checkDiagram diagram =
+  let semantics = sem_Diagram diagram
+      results = wrap_Diagram semantics Inh_Diagram
+      diagnostics = typeDiagnostics_Syn_Diagram results
+      flattenedDiag = flattenedDiag_Syn_Diagram results
   in (Just flattenedDiag, diagnostics)
 }

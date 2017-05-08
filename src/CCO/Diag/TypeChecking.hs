@@ -16,7 +16,7 @@ import System.IO
 
 typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \diag -> 
-  case checkDiagram diag of
+  case checkDiagram (Diagram diag) of
     (Just checkedDiag, []     ) -> pure checkedDiag
     (_               , (err:_)) -> errorMessage . ppDiagnostic $ err
 

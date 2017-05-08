@@ -14,6 +14,9 @@ import CCO.SourcePos (SourcePos(..), Source(..), Pos(..))
 type Ident = String
 }
 
+data Diagram 
+  | Diagram d :: Diag
+
 data DiagBinds
   | BindNil
   | BindCons     name :: {String} d :: Diag      ds :: DiagBinds
@@ -29,22 +32,7 @@ data Diag_
 data Diag
   | Diag  pos  :: {SourcePos}  binds :: DiagBinds d :: Diag_
   | Use   pos  :: {SourcePos}  name :: {Ident}
-{
-empty_Diag = 
-  Inh_Diag {
-    bottom_left_Inh_Diag = (0,0), 
-    offset_Inh_Diag = 0, 
-    right_Inh_Diag = 0, 
-    
-    diagTypeList_Inh_Diag = [], 
-    canExecuteLanguageList_Inh_Diag = [], 
-    canCompileLanguageList_Inh_Diag = [], 
-    implementationLanguageList_Inh_Diag = [],
-    flattenedDiagList_Inh_Diag = []
-  }  
 
-empty_sp = SourcePos Stdin EOF
-}
 -------------------------------------------------------------------------------
 -- Tree instances
 -------------------------------------------------------------------------------
