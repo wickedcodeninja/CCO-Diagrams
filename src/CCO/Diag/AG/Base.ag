@@ -32,7 +32,17 @@ data Diag
   | Diag  pos  :: {SourcePos}  d :: Diag_
 
 {
-empty_Diag = Inh_Diag {bottom_left_Inh_Diag = (0,0), offset_Inh_Diag = 0, right_Inh_Diag = 0, canExecuteLanguageList_Inh_Diag = [], canCompileLanguageList_Inh_Diag = [], diagTypeList_Inh_Diag = [], implementationLanguageList_Inh_Diag = []}  
+empty_Diag = 
+  Inh_Diag {
+    bottom_left_Inh_Diag = (0,0), 
+    offset_Inh_Diag = 0, 
+    right_Inh_Diag = 0, 
+    
+    diagTypeList_Inh_Diag = [], 
+    canExecuteLanguageList_Inh_Diag = [], 
+    canCompileLanguageList_Inh_Diag = [], 
+    implementationLanguageList_Inh_Diag = []
+  }  
 
 empty_sp = SourcePos Stdin EOF
 }

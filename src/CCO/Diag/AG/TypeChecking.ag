@@ -206,5 +206,5 @@ mkProgramType m = Type_Program m
   
 {
 getTypeDiagnostics :: Diag -> [Diagnostic]
-getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) (empty_Diag))
+getTypeDiagnostics diag = typeDiagnostics_Syn_Diag (wrap_Diag (sem_Diag diag) empty_Diag)
 }
