@@ -1,9 +1,9 @@
 imports
 {
-import CCO.SourcePos        (SourcePos)
 import CCO.Tree             (ATerm (App), Tree (fromTree, toTree))
 import CCO.Tree.Parser      (parseTree, app, arg)
 import Control.Applicative  (Applicative ((<*>)), (<$>))
+import CCO.SourcePos (SourcePos(..), Source(..), Pos(..))
 }
 
 -------------------------------------------------------------------------------
@@ -31,6 +31,11 @@ data Diag_
 data Diag
   | Diag  pos  :: {SourcePos}  d :: Diag_
 
+{
+empty_Diag = Inh_Diag {bottom_left_Inh_Diag = (0,0), offset_Inh_Diag = 0, right_Inh_Diag = 0, canExecuteLanguageList_Inh_Diag = [], canCompileLanguageList_Inh_Diag = [], diagTypeList_Inh_Diag = [], implementationLanguageList_Inh_Diag = []}  
+
+empty_sp = SourcePos Stdin EOF
+}
 -------------------------------------------------------------------------------
 -- Tree instances
 -------------------------------------------------------------------------------
