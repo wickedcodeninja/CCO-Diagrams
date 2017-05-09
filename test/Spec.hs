@@ -39,7 +39,7 @@ main = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace)))
           generate_tex "dmax" a
           hspec $ do
               describe "t2d" $ do
-                it "Program" $ do 
+                it "Program" $ do
                   let t = "\\begin{picture}(65,30)\
                           \  \\put(7.5,0){\\line(1,0){50}}\
                           \  \\put(7.5,0){\\line(0,1){15}}\
