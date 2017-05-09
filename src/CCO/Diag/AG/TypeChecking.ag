@@ -105,7 +105,9 @@ attr Diag Diag_ DiagBinds Diagram
 
 attr Diagram Diag Diag_
   syn   diagType                        :: { DiagType }
-
+attr Diag Diag_ DiagBinds
+  inh   diagType                        :: { DiagType }
+  
 sem Diag_
   | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
   | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
@@ -114,13 +116,17 @@ sem Diag_
   | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
       
   | Execute     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
-  | Compile     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
+  | Compile     loc.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
 
 sem Diag
+  | Diag        loc.diagType = @d.diagType
   | Use         lhs.diagType = case (lookup @name @lhs.diagTypeList) of
                                 Just typ -> typ
                                 Nothing  -> Type_Top
 
+sem Diagram
+  | Diagram     loc.diagType = @d.diagType
+                                
 sem Diag_
   | Program     lhs.typeDiagnostics = []
   | Compiler    lhs.typeDiagnostics = []
@@ -161,7 +167,11 @@ sem Diag
                 loc.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
                 loc.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
 
-
+sem Diagram
+  | Diagram     d.diagTypeList = []
+                d.implementationLanguageList = []
+                d.canCompileLanguageList = []
+                d.canExecuteLanguageList = []
 
 -- Flattening
 
@@ -176,8 +186,8 @@ attr DiagBinds
   syn   flattenedDiagList use {++} { [] } :: { [(String, Diag_)] }
 
 sem Diag
-  | Diag        lhs.flattenedDiag = Diag @pos BindNil $ @d.flattenedDiag_
-  | Use         lhs.flattenedDiag = Diag @pos BindNil $ @loc.flattenedDiag_
+  | Diag        lhs.flattenedDiag  = Diag @pos BindNil $ @d.flattenedDiag_
+  | Use         lhs.flattenedDiag  = Diag @pos BindNil $ @loc.flattenedDiag_
                 loc.flattenedDiag_ = fromJust (lookup @name @lhs.flattenedDiagList)
 sem Diag_
   | Program     lhs.flattenedDiag_ = Program @p @l
@@ -193,6 +203,46 @@ sem DiagBinds
 sem Diag
   | Diag        loc.flattenedDiagList = @binds.flattenedDiagList ++ @lhs.flattenedDiagList
 
+sem Diagram
+  | Diagram     d.flattenedDiagList = []
+
+-- Naming
+
+attr Diag Diag_
+  syn   diagName                     :: { Ident }
+attr Diag Diag_ DiagBinds
+  inh   diagName                     :: { Ident }
+  
+attr Diag Diag_ DiagBinds
+  inh   diagNameList                 :: { [(String, Ident)] }
+attr DiagBinds
+  syn   diagNameList use {++} { [] } :: { [(String, Ident)] }
+
+  
+sem Diag
+  | Diag        loc.diagName    = @d.diagName
+  | Use         lhs.diagName    = fromJust (lookup @name @lhs.diagNameList)
+
+sem Diag_
+  | Program     lhs.diagName    = @p
+  | Platform    lhs.diagName    = @m
+  | Compiler    lhs.diagName    = @c
+  | Interpreter lhs.diagName    = @i
+  | Execute     lhs.diagName    = @d1.diagName
+  | Compile     loc.diagName    = @d1.diagName
+
+sem Diagram
+  | Diagram     loc.diagName    = @d.diagName
+  
+sem DiagBinds
+  | BindCons    lhs.diagNameList = (@name, @d.diagName) : @ds.diagNameList
+  
+sem Diag
+  | Diag        loc.diagNameList = @binds.diagNameList ++ @lhs.diagNameList
+
+sem Diagram
+  | Diagram     d.diagNameList = []
+  
 -- Type Checking Specific Diagrams
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
@@ -222,9 +272,9 @@ setImplementationLanguage l1 (Type_Executor l2 (Right _) ) = Type_Executor l2 $ 
 setImplementationLanguage _   _                            = Type_Top
   
 getImplementationLanguage :: DiagType -> Maybe Language
-getImplementationLanguage (Type_Compiler _ (Right x)) = Just x
-getImplementationLanguage (Type_Executor _ (Right x)) = Just x
-getImplementationLanguage (Type_Program    (Right x)) = Just x
+getImplementationLanguage (Type_Compiler _ (Right m)) = Just m
+getImplementationLanguage (Type_Executor _ (Right m)) = Just m
+getImplementationLanguage (Type_Program    (Right l)) = Just l
 getImplementationLanguage _                           = Nothing
 
 mkCompilerType :: Implementation -> Maybe SourceAndTargetLanguage -> DiagType
@@ -236,9 +286,23 @@ mkExecutorType l2 (Just l1) = Type_Executor l1 l2
 mkExecutorType _  Nothing   = Type_Top
 
 mkProgramType :: Implementation -> DiagType
-mkProgramType m = Type_Program m
+mkProgramType = Type_Program
 }
 
+{
+createDiag_FromType :: Ident -> DiagType -> Diag_
+createDiag_FromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
+createDiag_FromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
+createDiag_FromType nm (Type_Executor l        (Right m)) = Interpreter nm l m
+createDiag_FromType nm (Type_Executor l        (Left  m)) | l == m = Platform m
+createDiag_FromType nm (Type_Executor l        (Left  m)) | l /= m = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
+createDiag_FromType nm (Type_Program           (Right l)) = Program nm l
+createDiag_FromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
+createDiag_FromType nm (Type_Top                        ) = Platform "T"
+
+wrapDiag :: Diag_ -> Diag
+wrapDiag = Diag (SourcePos Stdin EOF) BindNil 
+}
 
 
 {

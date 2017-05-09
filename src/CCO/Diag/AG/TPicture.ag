@@ -4,7 +4,13 @@ import CCO.Picture
 }
 
 {
-data Coords = Coords {bottom_left :: (Double, Double), right :: Double, max_right :: Double, top :: (Double, Double)}
+data Coords = 
+  Coords {
+    bottom_left :: (Double, Double), 
+    right :: Double, 
+    max_right :: Double, 
+    top :: (Double, Double)
+  }
 }
 
 attr Diag_ Diag DiagBinds
@@ -15,135 +21,145 @@ attr Diag_ Diag DiagBinds
 attr Diag_ Diag
   syn pic :: Commands
   syn coords :: Coords
-  syn name :: String
 
 attr Diagram
   syn pic :: {Picture}
 
-sem Diagram | Diagram lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
-                loc.ysize = (snd . top) @d.coords - (fst . top) @d.coords
-                d.bottom_left = (0,0)
-                d.offset = (abs . fst . top) @d.coords
-                d.right = 0
-                                
-sem Diag | Diag lhs.pic = @d.pic
-                d.offset = @lhs.offset
-                lhs.coords = @d.coords
-                d.bottom_left = @lhs.bottom_left
-                d.right = @lhs.right
-                lhs.name = @d.name
-                     
+sem Diagram 
+  | Diagram 
+      lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
+                
+      loc.ysize = (snd . top) @d.coords - (fst . top) @d.coords
+                
+      d.bottom_left = (0,0)
+      d.offset      = (abs . fst . top) @d.coords
+      d.right       = 0
+       
+sem Diag
+  | Use      
+      lhs.pic    = []
+      lhs.coords = Coords (0,0) 0 0 (0,0)
+      
 sem Diag_
-  | Program lhs.pic = mkProgram (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @p @l
-            loc.max_right = @lhs.right + 65
-            loc.right = @loc.max_right - 7.5
-            loc.bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
-            lhs.coords = Coords @loc.bottom_left @loc.right @loc.max_right (snd @loc.bottom_left, snd @loc.bottom_left + 30)
-            lhs.name = @p
-  | Platform lhs.pic = mkPlatform (fst @lhs.bottom_left, snd @lhs.bottom_left + @lhs.offset) @m
-             loc.right = fst @lhs.bottom_left + 50
-             lhs.coords = Coords (fst @lhs.bottom_left + 25, snd @lhs.bottom_left - 30) @loc.right @loc.right (snd @lhs.bottom_left - 30,snd @lhs.bottom_left)
-             lhs.name = @m
-  | Interpreter lhs.pic = mkInterpreter (@loc.left,snd @lhs.bottom_left + @lhs.offset) @i @l @m
-             loc.left = fst @lhs.bottom_left
-             loc.right = @loc.left + 50
-             loc.bottom_left_y = snd @lhs.bottom_left - 30
-             lhs.coords = Coords (fst @lhs.bottom_left, @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left)
-             lhs.name = @i
-  | Compiler lhs.pic = mkCompiler (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @c @l1 @l2 @m
-             loc.right = @lhs.right + 150
-             loc.bottom_left_y = snd @lhs.bottom_left - 20
-             lhs.coords = Coords (@lhs.right+50 , @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left + 10)
-             lhs.name = @l2
-  | Execute lhs.pic = @d1.pic ++ @d2.pic
-     d1.bottom_left = @lhs.bottom_left
-     d1.right = @lhs.right
-     d2.bottom_left = bottom_left @d1.coords
-     d2.right = right @d1.coords
-     loc.max_right = max (max_right @d1.coords) (max_right @d2.coords)
-     loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
-     loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
-     lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
-     lhs.name = @d2.name
-  | Compile lhs.pic = @d1.pic ++ @d2.pic  ++ pic_Syn_Diag_ @loc.d3
-            loc.d3 = (wrap_Diag_ (sem_Diag_ (Program @d1.name @d2.name)) (empty_Diag_ {bottom_left_Inh_Diag_ = @loc.bottom_left_d3 , offset_Inh_Diag_ = @lhs.offset, right_Inh_Diag_ = (right @d2.coords - 7.5)}  ))
-            d1.offset = @lhs.offset
-            d1.bottom_left = @lhs.bottom_left
-            d1.right = @lhs.right
-            d2.offset = @lhs.offset
-            d2.bottom_left = bottom_left @d1.coords
-            d2.right = right @d1.coords
-            loc.bottom_left_d3 = (right @d2.coords, (snd . bottom_left) @d1.coords)
-            loc.bottom_left = (right @d2.coords, (snd . bottom_left) @d1.coords)
-            loc.coords_d3 = coords_Syn_Diag_ @loc.d3
-            loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
-            loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
-            lhs.coords = Coords @loc.bottom_left (right @loc.coords_d3) (max_right @loc.coords_d3) (@loc.ymin, @loc.ymax)
-            lhs.name = name_Syn_Diag_ @loc.d3
+  | Program 
+      lhs.pic    = mkProgram (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @p @l
+      lhs.coords = Coords @loc.bottom_left @loc.right @loc.max_right (snd @loc.bottom_left, snd @loc.bottom_left + 30)
+            
+      loc.max_right   = @lhs.right + 65
+      loc.right       = @loc.max_right - 7.5
+      loc.bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
+            
+  | Platform 
+      lhs.pic    = mkPlatform (fst @lhs.bottom_left, snd @lhs.bottom_left + @lhs.offset) @m
+      lhs.coords = Coords (fst @lhs.bottom_left + 25, snd @lhs.bottom_left - 30) @loc.right @loc.right (snd @lhs.bottom_left - 30,snd @lhs.bottom_left)
+
+      loc.right  = fst @lhs.bottom_left + 50      
+      
+  | Interpreter 
+      lhs.pic    = mkInterpreter (@loc.left,snd @lhs.bottom_left + @lhs.offset) @i @l @m
+      lhs.coords = Coords (fst @lhs.bottom_left, @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left)
+
+      loc.left          = fst @lhs.bottom_left
+      loc.right         = @loc.left + 50
+      loc.bottom_left_y = snd @lhs.bottom_left - 30
+      
+  | Compiler 
+      lhs.pic    = mkCompiler (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @c @l1 @l2 @m
+      lhs.coords = Coords (@lhs.right+50 , @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left + 10)
+      
+      loc.right         = @lhs.right + 150
+      loc.bottom_left_y = snd @lhs.bottom_left - 20
+      
+  | Execute 
+      lhs.pic    = @d1.pic ++ @d2.pic
+      lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
+     
+      d1.bottom_left = @lhs.bottom_left
+      d1.right       = @lhs.right
+     
+      d2.bottom_left = bottom_left @d1.coords
+      d2.right       = right @d1.coords
+     
+      loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
+      loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
+     
+      loc.max_right = max (max_right @d1.coords) (max_right @d2.coords)
+     
+  | Compile 
+      lhs.pic    = @d1.pic ++ @d2.pic ++ (pic_Syn_Diag_ @loc.d3)
+      lhs.coords = Coords @loc.bottom_left (right @loc.coords_d3) (max_right @loc.coords_d3) (@loc.ymin, @loc.ymax)
+      
+      d1.bottom_left = @lhs.bottom_left
+      d1.right       = @lhs.right
+      
+      d2.bottom_left = bottom_left @d1.coords
+      d2.right       = right @d1.coords
+      
+      loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
+      loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
+      
+      loc.emptyDiag_Inh = 
+        empty_Diag_ {
+          offset_Inh_Diag_      = @lhs.offset, 
+          bottom_left_Inh_Diag_ = @loc.bottom_left_d3, 
+          right_Inh_Diag_       = right @d2.coords - 7.5
+        }
+        
+      loc.summaryDiag = createDiag_FromType @lhs.diagName @lhs.diagType
+      loc.d3          = wrap_Diag_ (sem_Diag_ @loc.summaryDiag) @loc.emptyDiag_Inh
+      
+      loc.bottom_left_d3 = (right @d2.coords, (snd . bottom_left) @d1.coords)
+      loc.bottom_left    = (right @d2.coords, (snd . bottom_left) @d1.coords)
+      loc.coords_d3      = coords_Syn_Diag_ @loc.d3
 
 {
 mkProgram :: (Double, Double) -> String -> String -> Commands
-mkProgram (x,y) p l = [
-                       Put (x+7.5,y+0) (Line (1,0) 50),
-                       Put (x+7.5,y+0) (Line (0,1) 15),
-                       Put (x+7.5,y+15) (Line (-1,2) 7.5),
-                       Put (x+57.5,y+15) (Line (1,2) 7.5),
-                       Put (x+57.5,y+0) (Line (0,1) 15),
-                       Put (x+0,y+30) (Line (1,0) 65),
-                       Put (x+7.5,y+15) (Makebox (50,15) p),
-                       Put (x+7.5,y+0) (Makebox (50,15) l)
-                      ]
+mkProgram (x,y) p l = 
+  [ Put (x+7.5,y+0) (Line (1,0) 50)
+  , Put (x+7.5,y+0) (Line (0,1) 15)
+  , Put (x+7.5,y+15) (Line (-1,2) 7.5)
+  , Put (x+57.5,y+15) (Line (1,2) 7.5)
+  , Put (x+57.5,y+0) (Line (0,1) 15)
+  , Put (x+0,y+30) (Line (1,0) 65)
+  , Put (x+7.5,y+15) (Makebox (50,15) p)
+  , Put (x+7.5,y+0) (Makebox (50,15) l)
+  ]
 
 mkPlatform :: (Double, Double) -> String -> Commands
-mkPlatform (x,y) m = [
-                      Put (x+0,y-30+15) (Line (5,-3) 25),
-                      Put (x+25,y-30+0) (Line (5,3) 25),
-                      Put (x+0,y-30+15) (Line (0,1) 15),
-                      Put (x+0,y-30+30) (Line (1,0) 50),
-                      Put (x+50,y-30+30) (Line (0,-1) 15),
-                      Put (x+0,y-30+15) (Makebox (50,15) m)
-                     ]
+mkPlatform (x,y) m = 
+  [ Put (x+0,y-30+15) (Line (5,-3) 25)
+  , Put (x+25,y-30+0) (Line (5,3) 25)
+  , Put (x+0,y-30+15) (Line (0,1) 15)
+  , Put (x+0,y-30+30) (Line (1,0) 50)
+  , Put (x+50,y-30+30) (Line (0,-1) 15)
+  , Put (x+0,y-30+15) (Makebox (50,15) m)
+  ]
 
 mkInterpreter :: (Double, Double) -> String -> String -> String -> Commands
-mkInterpreter (x,y) i l m = [
-                             Put (x+0,y-30+0) (Framebox (50,30) ""),
-                             Put (x+0,y-30+20) (Makebox (50,10) l),
-                             Put (x+0,y-30+10) (Makebox (50,10) i),
-                             Put (x+0,y-30+0) (Makebox (50,10) m)
-                            ]
+mkInterpreter (x,y) i l m = 
+  [ Put (x+0,y-30+0) (Framebox (50,30) "")
+  , Put (x+0,y-30+20) (Makebox (50,10) l)
+  , Put (x+0,y-30+10) (Makebox (50,10) i)
+  , Put (x+0,y-30+0) (Makebox (50,10) m)
+  ]
 
 mkCompiler :: (Double, Double) -> String -> String -> String -> String -> Commands
-mkCompiler (x,y) c l1 l2 m = [
-                              Put (x+50,y-20+0) (Line (0,1) 20),
-                              Put (x+50,y-20+20) (Line (-1,0) 50),
-                              Put (x+0,y-20+20) (Line (0,1) 10),
-                              Put (x+0,y-20+30) (Line (1,0) 150),
-                              Put (x+150,y-20+30) (Line (0,-1) 10),
-                              Put (x+150,y-20+20) (Line (-1,0) 50),
-                              Put (x+100,y-20+20) (Line (0,-1) 20),
-                              Put (x+100,y-20+0) (Line (-1,0) 50),
-                              Put (x+0,y-20+20) (Makebox (50,10) l1),
-                              Put (x+50,y-20+20) (Makebox (50,10) "$\\longrightarrow$"),
-                              Put (x+100,y-20+20) (Makebox (50,10) l2),
-                              Put (x+50,y-20+10) (Makebox (50,10) c),
-                              Put (x+50,y-20+0) (Makebox (50,10) m)
-                             ]
+mkCompiler (x,y) c l1 l2 m = 
+  [ Put (x+50,y-20+0) (Line (0,1) 20)
+  , Put (x+50,y-20+20) (Line (-1,0) 50)
+  , Put (x+0,y-20+20) (Line (0,1) 10)
+  , Put (x+0,y-20+30) (Line (1,0) 150)
+  , Put (x+150,y-20+30) (Line (0,-1) 10)
+  , Put (x+150,y-20+20) (Line (-1,0) 50)
+  , Put (x+100,y-20+20) (Line (0,-1) 20)
+  , Put (x+100,y-20+0) (Line (-1,0) 50)
+  , Put (x+0,y-20+20) (Makebox (50,10) l1)
+  , Put (x+50,y-20+20) (Makebox (50,10) "$\\longrightarrow$")
+  , Put (x+100,y-20+20) (Makebox (50,10) l2)
+  , Put (x+50,y-20+10) (Makebox (50,10) c)
+  , Put (x+50,y-20+0) (Makebox (50,10) m)
+ ]
 }
-
-sem Diagram
-  | Diagram  d.canCompileLanguageList = []
-             d.canExecuteLanguageList = []
-             d.diagTypeList = []
-             d.implementationLanguageList = []
-             d.flattenedDiagList = []
-
--- We don't really support rendering these..
--- TODO: But maybe we can do better than this?
-             
-sem Diag
-  | Use      lhs.name      = @name
-             lhs.pic       = []
-             lhs.coords    = Coords (0,0) 0 0 (0,0)
 
 {
 renderDiagram :: Diagram -> Picture
@@ -164,6 +180,10 @@ empty_Diag_ =
     canExecuteLanguageList_Inh_Diag_ = [], 
     canCompileLanguageList_Inh_Diag_ = [], 
     implementationLanguageList_Inh_Diag_ = [],
-    flattenedDiagList_Inh_Diag_ = []
+    flattenedDiagList_Inh_Diag_ = [],
+    diagNameList_Inh_Diag_ = [],
+    
+    diagName_Inh_Diag_ = "T",
+    diagType_Inh_Diag_ = Type_Top
   }
 }
