@@ -1,6 +1,6 @@
 let 
 [ myLinux = platform i686-linux
-, myCompiler = compiler java from UUAG to Haskell in i686-windows
+, myCompiler = compiler grammaz from UUAG to Haskell in i686-windows
 , myFirstInterpreter = interpreter hugs for Haskell in i686-windows
 , mySecondInterpreter = interpreter VMWare for i686-windows in i686-linux
 , myProgram = program hello in UUAG

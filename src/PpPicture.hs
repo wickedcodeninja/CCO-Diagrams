@@ -1,7 +1,12 @@
-import CCO.Component  (Component, component, printer, ioWrap)
+import CCO.Component  (Component, component, printer, ioWrap, ioRun)
 import CCO.Picture    (Picture)
 import CCO.Tree       (ATerm, Tree (toTree), parser)
 import Control.Arrow  ((>>>))
 
 main =
-  ioWrap (parser >>> (component toTree :: Component ATerm Picture) >>> printer)
+  do diag <- getContents
+     putStrLn $ "\\documentstyle[12pt]{article}"
+     putStrLn $ "\\begin{document}"
+     latex <- ioRun (parser >>> (component toTree :: Component ATerm Picture) >>> printer) diag
+     putStrLn $ latex
+     putStrLn $ "\\end{document}"

@@ -103,7 +103,7 @@ sem Diag
 attr Diag Diag_ DiagBinds Diagram
   syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
 
-attr Diag Diag_
+attr Diagram Diag Diag_
   syn   diagType                        :: { DiagType }
 
 sem Diag_
@@ -113,8 +113,8 @@ sem Diag_
   | Platform    lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
   | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
       
-  | Execute     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
-  | Compile     lhs.diagType = replaceImplementationLanguage @implementationLanguage @d1.diagType
+  | Execute     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
+  | Compile     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
 
 sem Diag
   | Use         lhs.diagType = case (lookup @name @lhs.diagTypeList) of
@@ -193,7 +193,6 @@ sem DiagBinds
 sem Diag
   | Diag        loc.flattenedDiagList = @binds.flattenedDiagList ++ @lhs.flattenedDiagList
 
-
 -- Type Checking Specific Diagrams
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
@@ -216,11 +215,11 @@ checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" +
 
 
 {
-replaceImplementationLanguage :: Implementation -> DiagType -> DiagType
-replaceImplementationLanguage l1 (Type_Program     (Right _) ) = Type_Program     $ l1
-replaceImplementationLanguage l1 (Type_Compiler l2 (Right _) ) = Type_Compiler l2 $ l1
-replaceImplementationLanguage l1 (Type_Executor l2 (Right _) ) = Type_Executor l2 $ l1
-replaceImplementationLanguage _   _                            = Type_Top
+setImplementationLanguage :: Implementation -> DiagType -> DiagType
+setImplementationLanguage l1 (Type_Program     (Right _) ) = Type_Program     $ l1
+setImplementationLanguage l1 (Type_Compiler l2 (Right _) ) = Type_Compiler l2 $ l1
+setImplementationLanguage l1 (Type_Executor l2 (Right _) ) = Type_Executor l2 $ l1
+setImplementationLanguage _   _                            = Type_Top
   
 getImplementationLanguage :: DiagType -> Maybe Language
 getImplementationLanguage (Type_Compiler _ (Right x)) = Just x
@@ -243,11 +242,12 @@ mkProgramType m = Type_Program m
 
 
 {
-checkDiagram :: Diagram -> (Maybe Diag, [Diagnostic])
+checkDiagram :: Diagram -> (Maybe (Diag, DiagType), [Diagnostic])
 checkDiagram diagram =
   let semantics = sem_Diagram diagram
       results = wrap_Diagram semantics Inh_Diagram
       diagnostics = typeDiagnostics_Syn_Diagram results
       flattenedDiag = flattenedDiag_Syn_Diagram results
-  in (Just flattenedDiag, diagnostics)
+      diagType = diagType_Syn_Diagram results
+  in (Just (flattenedDiag, diagType), diagnostics)
 }
