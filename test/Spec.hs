@@ -1,7 +1,7 @@
 import Test.Hspec
 import CCO.D2P (diag2picture)
 import CCO.SourcePos (SourcePos(..), Source(..), Pos(..))
-import CCO.Diag.Base (Diag(..), Diag_(..))
+import CCO.Diag.Base (Diag(..), Diag_(..), DiagBinds(..))
 import CCO.Component (ioRun, printer)
 import Control.Arrow ((>>>), arr)
 import Data.List
@@ -20,19 +20,19 @@ test n d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSp
                 generate_tex n a
                 replace ".0" "" a `shouldBe` filter (not . isSpace) t
 
-dprog = Diag sp (Program "hello" "Haskell")
+dprog = Diag sp (BindNil) (Program "hello" "Haskell")
 
-dplat = Diag sp (Platform "i686-windows")
+dplat = Diag sp (BindNil) (Platform "i686-windows")
 
-dint = Diag sp (Interpreter "hugs" "Haskell"  "i686-windows")
+dint = Diag sp (BindNil) (Interpreter "hugs" "Haskell"  "i686-windows")
 
-dcomp = Diag sp (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
+dcomp = Diag sp (BindNil) (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
 
-dpint = Diag sp (Execute dprog dint)
+dpint = Diag sp (BindNil) (Execute dprog dint)
 
-dprogcomp = Diag sp (Compile (Diag sp (Program "hello" "UUAG")) dcomp)
+dprogcomp = Diag sp (BindNil) (Compile (Diag sp (BindNil) (Program "hello" "UUAG")) dcomp)
 
-dmax = Diag sp (Execute dprogcomp dint)
+dmax = Diag sp (BindNil) (Execute dprogcomp dint)
 
 main :: IO ()
 main = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dmax
