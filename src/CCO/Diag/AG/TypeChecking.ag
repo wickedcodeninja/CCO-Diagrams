@@ -246,20 +246,47 @@ sem Diagram
 -- Type Checking Specific Diagrams
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
-checkTyExecute pos env d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
-checkTyExecute pos env d1 d2@(Type_Executor l2 _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos env d1 $ "/Execute/: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the execution language '" ++ l2 ++ "' of the second diagram." ]
-checkTyExecute pos env d1 d2                      | Just l1 <- getImplementationLanguage d1            = [TyError pos env d2 $ "/Execute/: The second diagram is not a valid execution unit for the language '" ++ l1 ++ "'."]
-checkTyExecute pos env d1 d2                      | Nothing <- getImplementationLanguage d1            = [TyError pos env d1 $ "/Execute/: The first diagram is not executable."]
+checkTyExecute pos env d1 d2 =
+  case (coerceProgram d1, coerceExecutor d2) of
+    ( Just (Type_Program (Right l1)), Just (Type_Executor l2 _) ) | l1 == l2 -> []
+                                                                  | l1 /= l2 -> [TyError pos env d1 $ "/Execute/: The `Program` represented by the first diagram is written in language '" ++ l1 ++ "'"
+                                                                                                             ++ " which is different from the execution language '" ++ l2 ++ "' of the `Executor`" 
+                                                                                                             ++ " represented by the second diagram."]
+    ( Just (Type_Program (Right l1)), Nothing                   )            -> [TyError pos env d2 $ "/Execute/: The type inferred for the second diagram is not a subtype of `Executor`."]                                               
+    ( Just (Type_Program (Left  l1)), _                         )            -> [TyError pos env d1 $ "/Execute/: The `Program` represented by the first diagram is already running on platform '" ++ l1 ++"'."]
+    ( Nothing                       , _                         )            -> [TyError pos env d1 $ "/Execute/: The type inferred for the first diagram is not a subtype of `Program`"]
 
 checkTyCompile :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
-checkTyCompile pos env d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 == l2  = [] -- Languages match!!
-checkTyCompile pos env d1 (Type_Compiler (l2, _) _) | Just l1 <- getImplementationLanguage d1, l1 /= l2  = [TyError pos env d1 $ "/Compile/: The implementation language '" ++ l1 ++ "' of the first diagram doesn't match the compiler frontend language '" ++ l2 ++ "' of the second diagram." ]
-checkTyCompile pos env d1 d2                        | Just l1 <- getImplementationLanguage d1            = [TyError pos env d2 $ "/Compile/: The second diagram is not a valid compiler for the language '" ++ l1 ++ "'."]
-checkTyCompile pos env d1 d2                        | Nothing <- getImplementationLanguage d1            = [TyError pos env d1 $ "/Compile/: The first diagram is not compilable."]
+checkTyCompile pos env d1 d2 =
+  case (coerceProgram d1, coerceCompiler d2) of
+    ( Just (Type_Program (Right l1)), Just (Type_Compiler (l2, _) _) ) | l1 == l2 -> []
+                                                                       | l1 /= l2 -> [TyError pos env d1 $ "/Compile/: The `Program` represented by the first diagram is written in language '" ++ l1 ++ "'"
+                                                                                                                  ++ " which is different from the source language '" ++ l2 ++ "' of the `Compiler`" 
+                                                                                                                  ++ " represented by the second diagram."]
+    ( Just (Type_Program (Right l1)), Nothing                   )                 -> [TyError pos env d2 $ "/Compile/: The type inferred for the second diagram is not a subtype of `Compiler`."]                                               
+    ( Just (Type_Program (Left  l1)), _                         )                 -> [TyError pos env d1 $ "/Compile/: The `Program` represented by the first diagram is already running on platform '" ++ l1 ++"'."]
+    ( Nothing                       , _                         )                 -> [TyError pos env d1 $ "/Compile/: The type inferred for the first diagram is not a subtype of `Program`"]
+
 
 checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [Diagnostic]
 checkTyUse pos env name (Just typ) = []
 checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" ++ name ++ "' is not in scope."] 
+}
+
+{
+coerceExecutor :: DiagType -> Maybe DiagType
+coerceExecutor d@(Type_Executor _ _) = Just d
+coerceExecutor _                     = Nothing
+
+coerceCompiler :: DiagType -> Maybe DiagType
+coerceCompiler d@(Type_Compiler _ _) = Just d
+coerceCompiler _                     = Nothing
+
+coerceProgram :: DiagType -> Maybe DiagType
+coerceProgram d@(Type_Program _)    = Just d
+coerceProgram d@(Type_Compiler _ m) = Just $ Type_Program m
+coerceProgram d@(Type_Executor _ m) = Just $ Type_Program m
+coerceProgram _                     = Nothing
 }
 
 

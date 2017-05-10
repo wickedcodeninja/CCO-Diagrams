@@ -5,7 +5,7 @@ import Control.Arrow  ((>>>))
 
 main =
   do diag <- getContents
-     putStrLn $ "\\documentstyle[12pt]{article}"
+     putStrLn $ "\\documentclass[10pt]{article}"
      putStrLn $ "\\begin{document}"
      latex <- ioRun (parser >>> (component toTree :: Component ATerm Picture) >>> printer) diag
      putStrLn $ latex
