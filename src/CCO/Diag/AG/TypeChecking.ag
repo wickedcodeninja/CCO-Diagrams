@@ -28,6 +28,7 @@ type Implementation = Either Platform Language
   
 data DiagType 
   = Type_Top 
+  | Type_Platform                         Platform
   | Type_Program                          Implementation
   | Type_Compiler SourceAndTargetLanguage Implementation -- canCompileLanguage
   | Type_Executor Language                Implementation -- canExecuteLanguage
@@ -39,7 +40,8 @@ instance Show DiagType where
   show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {"  ++ m ++  "}"
   show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {!" ++ m ++ "!}" 
   show (Type_Executor l1       (Right l2)) = "Executor [" ++ l1 ++ " ~> " ++ l2 ++ "]"
-  show (Type_Executor l1       (Left  _))  = "Executor {!" ++ l1 ++ "!}" 
+  show (Type_Executor l1       (Left  _))  = "Executor {!" ++ l1 ++ "!}"
+  show (Type_Platform m)                   = "Platform {!" ++ m ++ "!}"
 }
 
 -- Position Information
@@ -112,7 +114,7 @@ sem Diag_
   | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
   | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
   
-  | Platform    lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+  | Platform    lhs.diagType = mkPlatformType @implementationLanguage  
   | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
       
   | Execute     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
@@ -276,6 +278,7 @@ checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" +
 {
 coerceExecutor :: DiagType -> Maybe DiagType
 coerceExecutor d@(Type_Executor _ _) = Just d
+coerceExecutor d@(Type_Platform m  ) = Just $ Type_Executor m (Left m)
 coerceExecutor _                     = Nothing
 
 coerceCompiler :: DiagType -> Maybe DiagType
@@ -312,6 +315,10 @@ mkExecutorType :: Implementation -> Maybe Language -> DiagType
 mkExecutorType l2 (Just l1) = Type_Executor l1 l2
 mkExecutorType _  Nothing   = Type_Top
 
+mkPlatformType :: Implementation -> DiagType
+mkPlatformType (Left m ) = Type_Platform m
+mkPlatformType (Right _) = Type_Top
+
 mkProgramType :: Implementation -> DiagType
 mkProgramType = Type_Program
 }
@@ -321,10 +328,10 @@ createDiag_FromType :: Ident -> DiagType -> Diag_
 createDiag_FromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
 createDiag_FromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
 createDiag_FromType nm (Type_Executor l        (Right m)) = Interpreter nm l m
-createDiag_FromType nm (Type_Executor l        (Left  m)) | l == m = Platform m
-createDiag_FromType nm (Type_Executor l        (Left  m)) | l /= m = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
+createDiag_FromType nm (Type_Executor l        (Left  m)) = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
 createDiag_FromType nm (Type_Program           (Right l)) = Program nm l
 createDiag_FromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
+createDiag_FromType nm (Type_Platform          m        ) = Platform m
 createDiag_FromType nm (Type_Top                        ) = Platform "T"
 
 wrapDiag :: Diag_ -> Diag
