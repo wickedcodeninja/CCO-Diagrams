@@ -105,7 +105,7 @@ sem Diag_
           right_Inh_Diag_       = right @d2.coords - 7.5
         }
         
-      loc.summaryDiag = createDiag_FromType @lhs.diagName @lhs.diagType
+      loc.summaryDiag = createDiagFromType @lhs.diagName @lhs.diagType
       loc.d3          = wrap_Diag_ (sem_Diag_ @loc.summaryDiag) @loc.emptyDiag_Inh
       
       loc.bottom_left_d3 = (right @d2.coords, (snd . bottom_left) @d1.coords)
@@ -166,7 +166,6 @@ renderDiagram :: Diagram -> Picture
 renderDiagram diagram = pic_Syn_Diagram (wrap_Diagram (sem_Diagram diagram) Inh_Diagram)
 }
 
--- Fugliness Is Part of the job?
 {
 empty_Diag_ =
   Inh_Diag_ {
@@ -178,7 +177,7 @@ empty_Diag_ =
     
     diagTypeList_Inh_Diag_ = [], 
     canExecuteLanguageList_Inh_Diag_ = [], 
-    canCompileLanguageList_Inh_Diag_ = [], 
+    canTransformLanguageList_Inh_Diag_ = [], 
     implementationLanguageList_Inh_Diag_ = [],
     flattenedDiagList_Inh_Diag_ = [],
     diagNameList_Inh_Diag_ = [],

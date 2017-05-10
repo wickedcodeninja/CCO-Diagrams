@@ -10,21 +10,23 @@ let
       with
         use myCompiler
       end
-, myFirstExecutionStep =
+, mySecondIndirection = use myCompileStep
+, myFirstExecution = 
     execute
-      use myCompileStep
-    on
-      use myFirstInterpreter
-    end
-, mySecondExecutionStep = 
-    execute
-      use myFirstExecutionStep
-    on
       use mySecondInterpreter
+    on
+      use myLinux
     end
-] in 
+, mySecondExecution =
+    execute
+      use myFirstInterpreter
+    on
+      use myFirstExecution
+    end
+, myFirstIndirection = use mySecondIndirection
+] in
 execute
-  use mySecondExecutionStep
-on
-  use myLinux
+  use myFirstIndirection
+on 
+  use mySecondExecution
 end

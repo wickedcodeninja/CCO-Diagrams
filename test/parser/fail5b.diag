@@ -1,17 +1,17 @@
 execute
-  execute
-    execute
-      compile
-        program hello in UUAG
-      with
-        compiler uuagc from UUAG to Haskell in i686-windows
-      end
-    on
-      interpreter hugs for Haskell in i686-windows
-    end 
-  on
-    platform i686-windows
+  compile
+    program hello in UUAG
+  with
+    compiler uuagc from UUAG to Haskell in i686-windows
   end
 on
-  platform i686-linux
+  execute
+    interpreter hugs for Haskell in i686-windows
+  on
+    execute
+      platform i686-windows
+    on
+      platform i686-linux
+    end
+  end
 end

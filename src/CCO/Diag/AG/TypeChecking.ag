@@ -26,22 +26,33 @@ data Diagnostic
 
 type Implementation = Either Platform Language
   
-data DiagType 
-  = Type_Top 
-  | Type_Platform                         Platform
+data DiagType
+  -- Concrete Types
+  = Type_Platform                         Platform
   | Type_Program                          Implementation
-  | Type_Compiler SourceAndTargetLanguage Implementation -- canCompileLanguage
-  | Type_Executor Language                Implementation -- canExecuteLanguage
-
+  | Type_Interpreter Language             Implementation 
+  | Type_Compiler SourceAndTargetLanguage Implementation 
+  
+  -- Abstract Types
+  | Type_Top
+  | Type_Executor    Language                -- canExecuteLanguage
+  | Type_Transformer SourceAndTargetLanguage -- canTransformLanguage
+  
+  | Type_Executable    Language              -- hasImplementationLanguage
+  
 instance Show DiagType where
   show (Type_Top)                          = "Top"
+  show (Type_Platform m)                   = "Platform {!" ++ m ++ "!}"
+  
   show (Type_Program           (Right m))  = "Program {"  ++ m ++  "}"
   show (Type_Program           (Left  m))  = "Program {!" ++ m ++ "!}"
-  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {"  ++ m ++  "}"
-  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ " ~> " ++ l2 ++ "] {!" ++ m ++ "!}" 
-  show (Type_Executor l1       (Right l2)) = "Executor [" ++ l1 ++ " ~> " ++ l2 ++ "]"
-  show (Type_Executor l1       (Left  _))  = "Executor {!" ++ l1 ++ "!}"
-  show (Type_Platform m)                   = "Platform {!" ++ m ++ "!}"
+  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {"  ++ m ++  "}"
+  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {!" ++ m ++ "!}" 
+  show (Type_Interpreter l1    (Right l2)) = "Interpreter [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
+  show (Type_Interpreter l1    (Left  l2)) = "Interpreter [" ++ l1 ++ "] ~> {!" ++ l2 ++ "!}"
+  
+  show (Type_Executor l1)                  = "Executor [" ++ l1 ++ "] ~> {!" ++ l1 ++ "!}"
+  show (Type_Transformer (l1, l2))         = "Transformer [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
 }
 
 -- Position Information
@@ -56,7 +67,7 @@ sem Diag
 attr Diag Diag_
   syn   implementationLanguage :: { Either Platform Language }
   syn   canExecuteLanguage     :: { Maybe Language }
-  syn   canCompileLanguage     :: { Maybe SourceAndTargetLanguage }
+  syn   canTransformLanguage     :: { Maybe SourceAndTargetLanguage }
   
 sem Diag_
   | Program     loc.canExecuteLanguage = Nothing
@@ -72,17 +83,17 @@ sem Diag
   | Use         lhs.canExecuteLanguage = fromJust (lookup @name @lhs.canExecuteLanguageList)
   
 sem Diag_
-  | Program     loc.canCompileLanguage = Nothing
-  | Compiler    loc.canCompileLanguage = Just (@l1, @l2)
+  | Program     loc.canTransformLanguage = Nothing
+  | Compiler    loc.canTransformLanguage = Just (@l1, @l2)
   
-  | Platform    loc.canCompileLanguage = Nothing
-  | Interpreter loc.canCompileLanguage = Nothing
+  | Platform    loc.canTransformLanguage = Nothing
+  | Interpreter loc.canTransformLanguage = Nothing
       
-  | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
-  | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
+  | Execute     loc.canTransformLanguage = @d1.canTransformLanguage
+  | Compile     loc.canTransformLanguage = @d1.canTransformLanguage
   
 sem Diag
-  | Use         lhs.canCompileLanguage = fromJust (lookup @name @lhs.canCompileLanguageList)
+  | Use         lhs.canTransformLanguage = fromJust (lookup @name @lhs.canTransformLanguageList)
   
 sem Diag_
   | Program     loc.implementationLanguage = Right @l
@@ -91,10 +102,12 @@ sem Diag_
   | Platform    loc.implementationLanguage = Left  @m
   | Interpreter loc.implementationLanguage = Right @m
       
-  | Execute     loc.implementationLanguage = @d2.implementationLanguage
-  | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
+  | Execute     loc.implementationLanguage = case @d2.implementationLanguage of
+                                               Right l       -> Left l
+                                               Left  m       -> Left m
+  | Compile     loc.implementationLanguage = case @d2.canTransformLanguage of
                                                Just (l1, l2) -> Right l2
-                                               Nothing       -> Left "invalid"
+                                               Nothing       -> Left "<invalid>"
 sem Diag
   | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
 
@@ -112,10 +125,10 @@ attr Diag Diag_ DiagBinds
   
 sem Diag_
   | Program     lhs.diagType = mkProgramType  @implementationLanguage                    
-  | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
+  | Compiler    lhs.diagType = mkCompilerType @implementationLanguage @canTransformLanguage 
   
-  | Platform    lhs.diagType = mkPlatformType @implementationLanguage  
-  | Interpreter lhs.diagType = mkExecutorType @implementationLanguage @canExecuteLanguage  
+  | Platform    lhs.diagType = mkPlatformType @canExecuteLanguage  
+  | Interpreter lhs.diagType = mkInterpreterType @implementationLanguage @canExecuteLanguage  
       
   | Execute     lhs.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
   | Compile     loc.diagType = setImplementationLanguage @implementationLanguage @d1.diagType
@@ -151,28 +164,28 @@ attr Diag Diag_ DiagBinds
   inh   diagTypeList                :: { [(String, (DiagType)                     )] }
   inh   implementationLanguageList  :: { [(String, (Either Platform Language)     )] }
   inh   canExecuteLanguageList      :: { [(String, (Maybe Language)               )] }
-  inh   canCompileLanguageList      :: { [(String, (Maybe SourceAndTargetLanguage))] }
+  inh   canTransformLanguageList    :: { [(String, (Maybe SourceAndTargetLanguage))] }
 attr DiagBinds
   syn   diagTypeList               use {++} { [] } :: { [(String, (DiagType)                     )] }
   syn   implementationLanguageList use {++} { [] } :: { [(String, (Either Platform Language)     )] }
   syn   canExecuteLanguageList     use {++} { [] } :: { [(String, (Maybe Language)               )] }
-  syn   canCompileLanguageList     use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
+  syn   canTransformLanguageList   use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
 
 sem DiagBinds
   | BindCons    lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
                 lhs.implementationLanguageList = (@name, @d.implementationLanguage) : @ds.implementationLanguageList
                 lhs.canExecuteLanguageList     = (@name, @d.canExecuteLanguage)     : @ds.canExecuteLanguageList
-                lhs.canCompileLanguageList     = (@name, @d.canCompileLanguage)     : @ds.canCompileLanguageList
+                lhs.canTransformLanguageList   = (@name, @d.canTransformLanguage)   : @ds.canTransformLanguageList
 sem Diag
   | Diag        loc.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
                 loc.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
                 loc.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
-                loc.canCompileLanguageList     = @binds.canCompileLanguageList     ++ @lhs.canCompileLanguageList
+                loc.canTransformLanguageList   = @binds.canTransformLanguageList   ++ @lhs.canTransformLanguageList
 
 sem Diagram
   | Diagram     d.diagTypeList = []
                 d.implementationLanguageList = []
-                d.canCompileLanguageList = []
+                d.canTransformLanguageList = []
                 d.canExecuteLanguageList = []
 
 -- Flattening
@@ -249,25 +262,27 @@ sem Diagram
 {
 checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
 checkTyExecute pos env d1 d2 =
-  case (coerceProgram d1, coerceExecutor d2) of
-    ( Just (Type_Program (Right l1)), Just (Type_Executor l2 _) ) | l1 == l2 -> []
-                                                                  | l1 /= l2 -> [TyError pos env d1 $ "/Execute/: The `Program` represented by the first diagram is written in language '" ++ l1 ++ "'"
-                                                                                                             ++ " which is different from the execution language '" ++ l2 ++ "' of the `Executor`" 
-                                                                                                             ++ " represented by the second diagram."]
-    ( Just (Type_Program (Right l1)), Nothing                   )            -> [TyError pos env d2 $ "/Execute/: The type inferred for the second diagram is not a subtype of `Executor`."]                                               
-    ( Just (Type_Program (Left  l1)), _                         )            -> [TyError pos env d1 $ "/Execute/: The `Program` represented by the first diagram is already running on platform '" ++ l1 ++"'."]
-    ( Nothing                       , _                         )            -> [TyError pos env d1 $ "/Execute/: The type inferred for the first diagram is not a subtype of `Program`"]
+  case (coerceExecutable d1, coerceExecutor d2) of
+    ( Just (Type_Executable l1), Just (Type_Executor l2) ) 
+                                | l1 == l2 -> []
+                                | l1 /= l2 -> [TyError pos env d1 $ "/Execute/: The `Executable` represented by the first diagram is written in language '" ++ l1 ++ "'"
+                                                                           ++ " which is different from the execution language '" ++ l2 ++ "' of the `Executor`" 
+                                                                           ++ " represented by the second diagram."]
+    ( Just (Type_Executable l1), Nothing ) -> [TyError pos env d2 $ "/Execute/: The type inferred for the second diagram is not a subtype of `Executor`."]                                               
+    ( Nothing                  , _       ) -> [TyError pos env d1 $ "/Execute/: The type inferred for the first diagram is not a subtype of `Executable`."
+                                                                           ++ " Please make sure you aren't executing something which is already executing."]
 
 checkTyCompile :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
 checkTyCompile pos env d1 d2 =
-  case (coerceProgram d1, coerceCompiler d2) of
-    ( Just (Type_Program (Right l1)), Just (Type_Compiler (l2, _) _) ) | l1 == l2 -> []
-                                                                       | l1 /= l2 -> [TyError pos env d1 $ "/Compile/: The `Program` represented by the first diagram is written in language '" ++ l1 ++ "'"
-                                                                                                                  ++ " which is different from the source language '" ++ l2 ++ "' of the `Compiler`" 
-                                                                                                                  ++ " represented by the second diagram."]
-    ( Just (Type_Program (Right l1)), Nothing                   )                 -> [TyError pos env d2 $ "/Compile/: The type inferred for the second diagram is not a subtype of `Compiler`."]                                               
-    ( Just (Type_Program (Left  l1)), _                         )                 -> [TyError pos env d1 $ "/Compile/: The `Program` represented by the first diagram is already running on platform '" ++ l1 ++"'."]
-    ( Nothing                       , _                         )                 -> [TyError pos env d1 $ "/Compile/: The type inferred for the first diagram is not a subtype of `Program`"]
+  case (coerceExecutable d1, coerceTransformer d2) of
+    ( Just (Type_Executable l1), Just (Type_Transformer (l2, _)) ) 
+                                | l1 == l2 -> []
+                                | l1 /= l2 -> [TyError pos env d1 $ "/Compile/: The `Executable` represented by the first diagram is written in language '" ++ l1 ++ "'"
+                                                                           ++ " which is different from the source language '" ++ l2 ++ "' of the `Transformer`" 
+                                                                           ++ " represented by the second diagram."]
+    ( Just (Type_Executable l1), Nothing ) -> [TyError pos env d2 $ "/Compile/: The type inferred for the second diagram is not a subtype of `Compiler`."]                                               
+    ( Nothing                  , _       ) -> [TyError pos env d1 $ "/Compile/: The type inferred for the first diagram is not a subtype of `Executable`."
+                                                                           ++ " Please make sure you aren't transforming something which is already executing."]
 
 
 checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [Diagnostic]
@@ -277,62 +292,60 @@ checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" +
 
 {
 coerceExecutor :: DiagType -> Maybe DiagType
-coerceExecutor d@(Type_Executor _ _) = Just d
-coerceExecutor d@(Type_Platform m  ) = Just $ Type_Executor m (Left m)
-coerceExecutor _                     = Nothing
+coerceExecutor (Type_Interpreter l _) = Just $ Type_Executor l
+coerceExecutor (Type_Platform m  )    = Just $ Type_Executor m
+coerceExecutor _                      = Nothing
 
-coerceCompiler :: DiagType -> Maybe DiagType
-coerceCompiler d@(Type_Compiler _ _) = Just d
-coerceCompiler _                     = Nothing
+coerceTransformer :: DiagType -> Maybe DiagType
+coerceTransformer (Type_Compiler t _) = Just $ Type_Transformer t
+coerceTransformer _                   = Nothing
 
-coerceProgram :: DiagType -> Maybe DiagType
-coerceProgram d@(Type_Program _)    = Just d
-coerceProgram d@(Type_Compiler _ m) = Just $ Type_Program m
-coerceProgram d@(Type_Executor _ m) = Just $ Type_Program m
-coerceProgram _                     = Nothing
+coerceExecutable :: DiagType -> Maybe DiagType
+coerceExecutable (Type_Program       (Right m)) = Just $ Type_Executable m
+coerceExecutable (Type_Compiler    _ (Right m)) = Just $ Type_Executable m
+coerceExecutable (Type_Interpreter _ (Right m)) = Just $ Type_Executable m
+coerceExecutable _                              = Nothing
 }
-
-
 
 {
 setImplementationLanguage :: Implementation -> DiagType -> DiagType
-setImplementationLanguage l1 (Type_Program     (Right _) ) = Type_Program     $ l1
-setImplementationLanguage l1 (Type_Compiler l2 (Right _) ) = Type_Compiler l2 $ l1
-setImplementationLanguage l1 (Type_Executor l2 (Right _) ) = Type_Executor l2 $ l1
-setImplementationLanguage _   _                            = Type_Top
+setImplementationLanguage m (Type_Program       _ ) = Type_Program       $ m
+setImplementationLanguage m (Type_Compiler t    _ ) = Type_Compiler t    $ m
+setImplementationLanguage m (Type_Interpreter l _ ) = Type_Interpreter l $ m
+setImplementationLanguage _   _                     = Type_Top
   
 getImplementationLanguage :: DiagType -> Maybe Language
-getImplementationLanguage (Type_Compiler _ (Right m)) = Just m
-getImplementationLanguage (Type_Executor _ (Right m)) = Just m
-getImplementationLanguage (Type_Program    (Right l)) = Just l
-getImplementationLanguage _                           = Nothing
+getImplementationLanguage (Type_Program       (Right m)) = Just m
+getImplementationLanguage (Type_Compiler _    (Right m)) = Just m
+getImplementationLanguage (Type_Interpreter _ (Right m)) = Just m
+getImplementationLanguage _                              = Nothing
 
 mkCompilerType :: Implementation -> Maybe SourceAndTargetLanguage -> DiagType
 mkCompilerType m (Just l12) = Type_Compiler l12 m
 mkCompilerType _ Nothing    = Type_Top
 
-mkExecutorType :: Implementation -> Maybe Language -> DiagType
-mkExecutorType l2 (Just l1) = Type_Executor l1 l2
-mkExecutorType _  Nothing   = Type_Top
+mkInterpreterType :: Implementation -> Maybe Language -> DiagType
+mkInterpreterType l2 (Just l1) = Type_Interpreter l1 l2
+mkInterpreterType _  Nothing   = Type_Top
 
-mkPlatformType :: Implementation -> DiagType
-mkPlatformType (Left m ) = Type_Platform m
-mkPlatformType (Right _) = Type_Top
+mkPlatformType :: Maybe Language -> DiagType
+mkPlatformType (Just m) = Type_Platform m
+mkPlatformType Nothing  = Type_Top
 
 mkProgramType :: Implementation -> DiagType
 mkProgramType = Type_Program
 }
 
 {
-createDiag_FromType :: Ident -> DiagType -> Diag_
-createDiag_FromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
-createDiag_FromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
-createDiag_FromType nm (Type_Executor l        (Right m)) = Interpreter nm l m
-createDiag_FromType nm (Type_Executor l        (Left  m)) = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
-createDiag_FromType nm (Type_Program           (Right l)) = Program nm l
-createDiag_FromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
-createDiag_FromType nm (Type_Platform          m        ) = Platform m
-createDiag_FromType nm (Type_Top                        ) = Platform "T"
+createDiagFromType :: Ident -> DiagType -> Diag_
+createDiagFromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
+createDiagFromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
+createDiagFromType nm (Type_Interpreter l     (Right m)) = Interpreter nm l m
+createDiagFromType nm (Type_Interpreter l     (Left  m)) = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
+createDiagFromType nm (Type_Program           (Right l)) = Program nm l
+createDiagFromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
+createDiagFromType nm (Type_Platform          m        ) = Platform m
+createDiagFromType nm (_                               ) = Platform "T"
 
 wrapDiag :: Diag_ -> Diag
 wrapDiag = Diag (SourcePos Stdin EOF) BindNil 
