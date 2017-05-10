@@ -30,20 +30,57 @@ data Diag_
   | Compile      d1 :: Diag     d2 :: Diag
   
 data Diag
-  | Diag  pos  :: {SourcePos}  binds :: DiagBinds d :: Diag_
-  | Use   pos  :: {SourcePos}  name :: {Ident}
+  | Diag  pos  :: {SourcePos} typeAnnotation :: {Maybe (Ident, DiagType)} binds :: DiagBinds d :: Diag_
+  | Use   pos  :: {SourcePos} name :: {Ident}
 
+  
+{
+type Language = String
+type Platform = String
+type Implementation = Either Platform Language
+  
+type SourceAndTargetLanguage = (Language, Language)
+
+data DiagType
+  -- Concrete Types
+  = Type_Platform                         Platform
+  | Type_Program                          Implementation
+  | Type_Interpreter Language             Implementation 
+  | Type_Compiler SourceAndTargetLanguage Implementation 
+  
+  -- Abstract Types
+  | Type_Top
+  | Type_Executor Language
+  | Type_Transformer SourceAndTargetLanguage
+  
+  | Type_Executable Language
+  deriving Eq
+instance Show DiagType where
+  show (Type_Program           (Right m))  = "Program {"  ++ m ++  "}"
+  show (Type_Program           (Left  m))  = "Program {!" ++ m ++ "!}"
+  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {"  ++ m ++  "}"
+  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {!" ++ m ++ "!}" 
+  show (Type_Interpreter l1    (Right l2)) = "Interpreter [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
+  show (Type_Interpreter l1    (Left  l2)) = "Interpreter [" ++ l1 ++ "] ~> {!" ++ l2 ++ "!}"
+  
+  show (Type_Top)                          = "Top"
+  show (Type_Executor l1)                  = "Executor [" ++ l1 ++ "] ~> {!" ++ l1 ++ "!}"
+  show (Type_Transformer (l1, l2))         = "Transformer [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
+  show (Type_Executable l1)                = "Executable {" ++ l1 ++ "}"
+  show (Type_Platform m)                   = "Platform {!" ++ m ++ "!}"
+}
+  
 -------------------------------------------------------------------------------
 -- Tree instances
 -------------------------------------------------------------------------------
 
 {
 instance Tree Diag where
-  fromTree (Diag pos binds d) = App "Diag" [fromTree pos, fromTree binds, fromTree d]
+  fromTree (Diag pos typ binds d) = App "Diag" [fromTree pos, fromTree typ, fromTree binds, fromTree d]
   fromTree (Use  pos name)    = App "Use"  [fromTree pos, fromTree name]
   
-  toTree = parseTree [ app "Diag" (Diag <$> arg <*> arg <*> arg)
-                     , app "Use"  (Use  <$> arg <*> arg        )
+  toTree = parseTree [ app "Diag" (Diag <$> arg <*> arg <*> arg <*> arg)
+                     , app "Use"  (Use  <$> arg <*> arg                )
                      ]
 
 instance Tree Diag_ where
@@ -73,4 +110,26 @@ instance Tree DiagBinds where
              [ app "BindNil"  (pure BindNil)
              , app "BindCons" (BindCons <$> arg <*> arg <*> arg)
              ]
+             
+instance Tree DiagType where
+  fromTree (Type_Interpreter l m) = App "Type_Interpreter" [fromTree l, fromTree m]
+  fromTree (Type_Compiler t m)    = App "Type_Compiler"    [fromTree t, fromTree m]
+  fromTree (Type_Program m)       = App "Type_Program"     [fromTree m]
+  fromTree (Type_Platform m)      = App "Type_Platform"    [fromTree m]
+  
+  fromTree (Type_Top)             = App "Type_Top"         []
+  fromTree (Type_Executor l)      = App "Type_Executor"    [fromTree l]
+  fromTree (Type_Transformer t)   = App "Type_Transformer" [fromTree t]
+  fromTree (Type_Executable l)    = App "Type_Executable"  [fromTree l]
+  
+  toTree = parseTree [ app "Type_Interpreter" (Type_Interpreter <$> arg <*> arg)
+                     , app "Type_Compiler"    (Type_Compiler <$> arg <*> arg)
+                     , app "Type_Program"     (Type_Program <$> arg)
+                     , app "Type_Platform"    (Type_Platform <$> arg)
+  
+                     , app "Type_Top"         (pure Type_Top)
+                     , app "Type_Executor"    (Type_Executor <$> arg)
+                     , app "Type_Transformer" (Type_Transformer <$> arg)
+                     , app "Type_Executable"  (Type_Executable <$> arg)
+                     ]
 }

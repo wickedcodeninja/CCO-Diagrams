@@ -44,7 +44,7 @@ pDiag = pPlain <|> pLet <|> pUse
 
 -- | Parses a 'Diag'.
 pPlain :: TokenParser Diag
-pPlain = Diag <$> sourcePos <*> pure BindNil <*> pDiag_
+pPlain = Diag <$> sourcePos <*> pure Nothing <*> pure BindNil <*> pDiag_
 
 -- | Parses a 'Use'.
 pUse :: TokenParser Diag
@@ -52,7 +52,7 @@ pUse = Use <$> sourcePos <* keyword "use" <*> ident
                       
 -- | Parses a 'Let'.
 pLet :: TokenParser Diag
-pLet = Diag <$> sourcePos <* keyword "let" <*> pBinds <*
+pLet = Diag <$> sourcePos <* keyword "let" <*> pure Nothing <*> pBinds <*
                keyword "in" <*> pDiag_
 -- | Parses a 'Let'.
 pBinds :: TokenParser DiagBinds

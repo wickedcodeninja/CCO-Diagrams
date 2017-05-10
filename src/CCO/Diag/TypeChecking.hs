@@ -18,20 +18,24 @@ typeCheckDiag :: Component Diag Diag
 typeCheckDiag = component $ \diag -> 
   case checkDiagram (Diagram diag) of
     (_                           , (err:_) ) -> errorMessage . ppDiagnostic $ err
-    (Just (checkedDiag, diagType),     []  ) -> do warn_ $ show diagType
-                                                   pure checkedDiag
+    (Just (checkedDiag, _),            []  ) -> pure checkedDiag
 
 ppDiagnostic :: Diagnostic -> Doc
-ppDiagnostic (TyError pos env inferred descr) = above [ppHeader, text " ", ppInferred, ppRelevant]
+ppDiagnostic (TyError pos env inferred maybeExpected descr) = above $ [ppHeader, text " "] ++ ppExpected ++ [ppInferred] ++ ppBindings
   where
-    ppHeader   = wrapped $
-                 describeSourcePos pos ++ ": Type error: " ++ descr
+    ppHeader   = wrapped $ describeSourcePos pos ++ ": Type error: " ++ descr
     ppInferred = text "? Inferred type: " >|< showable inferred
-    ppRelevant = text "? Relevant bindings: " >|< showable env
+    ppExpected = 
+      case maybeExpected of
+        Just expected -> [text "? Expected type: " >|< showable expected]
+        Nothing       -> []
+    ppBindings = 
+      case env of
+        (_:_) -> [text "? Relevant bindings: " >|< showable env]
+        []    -> []
 ppDiagnostic (ScopeError pos env descr) = above [ppHeader, text " ", ppInferred]
   where
-    ppHeader   = wrapped $
-                 describeSourcePos pos ++ ": Scope error: " ++ descr
+    ppHeader   = wrapped $ describeSourcePos pos ++ ": Scope error: " ++ descr
     ppInferred = text "? Relevant bindings: " >|< showable env
 
           
