@@ -1,13 +1,21 @@
 imports
 {
 import CCO.Picture
+import Linear
+import Control.Lens
 }
 
 {
-type Point = (Double, Double)
-type Range = (Double, Double)
+type Point = V2 Double
+type Range = V2 Double
 
 data Connect = CompIn Point | CompOut Point | Impl Point | Execl Point
+
+getPoint :: Connect -> Point
+getPoint (CompIn a) = a
+getPoint (CompOut a) = a
+getPoint (Impl a) = a
+getPoint (Execl a) = a
 
 data Attach = 
   Attach {
@@ -16,6 +24,15 @@ data Attach =
      impl :: Connect,
      execl :: Connect
   }
+
+data DiagramType = Prog | Plat | Comp | Inter
+
+toM42 :: Attach -> M42 Double
+toM42 a = V4 (getPoint $ compIn a) (getPoint $ compOut a) (getPoint $ impl a) (getPoint $ execl a) 
+
+fromM42 :: M42 Double -> Attach
+fromM42 (V4 a b c d) = Attach (CompIn a) (CompOut b) (Impl c) (Execl d)
+
 }
 
 attr Diag_ Diag DiagBinds
@@ -26,8 +43,8 @@ attr Diag_ Diag DiagBinds
 attr Diag_ Diag
   syn pic :: Commands
   syn outAttach :: Attach
-  syn xrange :: {(Double, Double)}
-  syn yrange :: {(Double, Double)}
+  syn xrange :: Range
+  syn yrange :: Range
 
 attr Diagram
   syn pic :: {Picture}
@@ -36,140 +53,173 @@ sem Diagram
   | Diagram 
       lhs.pic = Picture (@loc.xsize, @loc.ysize) @d.pic
                 
-      loc.xsize = snd @d.xrange - fst @d.xrange
-      loc.ysize = snd @d.yrange - fst @d.yrange
+      loc.xsize = @d.xrange ^._y - @d.xrange ^._x
+      loc.ysize = @d.yrange ^._y - @d.yrange ^._x
 
-      d.xoffset = (abs . fst) @d.xrange
-      d.yoffset = (abs . fst) @d.yrange
-      d.connect = CompOut (0,0)
+      d.xoffset = abs @d.xrange ^._x
+      d.yoffset = abs @d.yrange ^._x
+      d.connect = CompOut (V2 0 0)
                 
       
        
 sem Diag
   | Use      
       lhs.pic    = []
-      lhs.xrange = (0,0)
-      lhs.yrange = (0,0)
+      lhs.xrange = (V2 0 0)
+      lhs.yrange = (V2 0 0)
       lhs.outAttach = Attach {}
       
 sem Diag_
   | Program 
-      lhs.pic    = mkProgram @lhs.connect (@lhs.xoffset, @lhs.yoffset) @p @l
+      lhs.pic    = mkProgram @lhs.connect (V2 @lhs.xoffset @lhs.yoffset) @p @l
       lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.yrange = @loc.ranges ^. _y
+      lhs.xrange = @loc.ranges ^. _x
 
       loc.ranges = rangeProgram @lhs.connect
 
             
   | Platform 
-      lhs.pic    = []
-      lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.pic    = mkPlatform @lhs.connect (V2 @lhs.xoffset @lhs.yoffset) @m
+      lhs.outAttach = attachPlatform @lhs.connect
+      lhs.yrange = @loc.ranges ^. _y
+      lhs.xrange = @loc.ranges ^. _x
 
-      loc.ranges = rangeProgram @lhs.connect
+      loc.ranges = rangePlatform @lhs.connect
       
   | Interpreter 
-      lhs.pic    = []
-      lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.pic    = mkInterpreter @lhs.connect (V2 @lhs.xoffset @lhs.yoffset) @i @l @m
+      lhs.outAttach = attachInterpreter @lhs.connect
+      lhs.yrange = @loc.ranges ^. _y
+      lhs.xrange = @loc.ranges ^. _x
 
-      loc.ranges = rangeProgram @lhs.connect
+      loc.ranges = rangeInterpreter @lhs.connect
       
   | Compiler 
-      lhs.pic    = []
-      lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.pic    = mkCompiler @lhs.connect (V2 @lhs.xoffset @lhs.yoffset) @c @l1 @l2 @m
+      lhs.outAttach = attachCompiler @lhs.connect
+      lhs.yrange = @loc.ranges ^. _y
+      lhs.xrange = @loc.ranges ^. _x
 
-      loc.ranges = rangeProgram @lhs.connect
+      loc.ranges = rangeCompiler @lhs.connect
       
   | Execute 
       lhs.pic    = []
-      lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.outAttach = attachCompiler @lhs.connect
+      lhs.yrange = @loc.ranges ^. _y
+      lhs.xrange = @loc.ranges ^. _x
 
-      loc.ranges = rangeProgram @lhs.connect
+      loc.ranges = rangeCompiler @lhs.connect
      
   | Compile 
       lhs.pic    = []
       lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = snd @loc.ranges
-      lhs.xrange = fst @loc.ranges
+      lhs.yrange = V2 0 0
+      lhs.xrange = V2 0 0 
 
       loc.ranges = rangeProgram @lhs.connect
 
 {
 
-mkProgram :: Connect -> Point -> String -> String -> Commands
-mkProgram c (xo, yo) = mkProgram' (xnew, ynew)
-  where (x,y)  = calcProgram c
-        (xnew, ynew) = (x + xo, y + yo)
+progOrig  = V4 (V2 (-57.5) (-15)) (V2 (-7.5) (-15)) (V2 (-7.5) 0) (V2 0 0)
+platOrig  = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 (-30) 0)
+intOrig = V4 (V2 (-50) (-10)) (V2 0 (-10)) (V2 0 0) (V2 0 (-30))
+compOrig = V4 (V2 (-100) (-10)) (V2 (-150) (-30)) (V2 (-50) 0) (V2 0 0)
 
-mkProgram' (x,y) p l = 
-  [ Put (x+7.5,y+0) (Line (1,0) 50)
-  , Put (x+7.5,y+0) (Line (0,1) 15)
-  , Put (x+7.5,y+15) (Line (-1,2) 7.5)
-  , Put (x+57.5,y+15) (Line (1,2) 7.5)
-  , Put (x+57.5,y+0) (Line (0,1) 15)
-  , Put (x+0,y+30) (Line (1,0) 65)
-  , Put (x+7.5,y+15) (Makebox (50,15) p)
-  , Put (x+7.5,y+0) (Makebox (50,15) l)
+orig Plat = orig' platOrig 
+orig Prog = orig' progOrig
+orig Inter = orig' intOrig
+orig Comp = orig' compOrig
+
+orig' :: M42 Double -> Connect -> Point
+orig' (V4 a b c d) (CompIn e) = e ^+^ a
+orig' (V4 a b c d) (CompOut e) = e ^+^ b 
+orig' (V4 a b c d) (Impl e) = e ^+^ c
+orig' (V4 a b c d) (Execl e) = e ^+^ d
+
+mk d f c off = f (base ^+^ off)
+  where base  = orig d c
+
+mkProgram = mk Prog mkProgram'
+mkPlatform = mk Plat mkPlatform'
+mkInterpreter = mk Inter mkInterpreter'
+mkCompiler = mk Comp mkCompiler'
+
+
+mkProgram' (V2 x y) p l = 
+  [ Put (x+7.5, y) (Line (1,0) 50)
+  , Put (x+7.5, y) (Line (0,1) 15)
+  , Put (x+7.5, y+15) (Line (-1,2) 7.5)
+  , Put (x+57.5, y+15) (Line (1,2) 7.5)
+  , Put (x+57.5, y) (Line (0,1) 15)
+  , Put (x, y+30) (Line (1,0) 65)
+  , Put (x+7.5, y+15) (Makebox (50,15) p)
+  , Put (x+7.5, y) (Makebox (50,15) l)
   ]
 
-calcProgram :: Connect -> Point
-calcProgram (CompIn (x,y))  = (x - 57.5 , y - 15)
-calcProgram (CompOut (x,y))  = (x - 7.5, y - 15)
-calcProgram (Impl (x,y))  = (x - 7.5, y)
-calcProgram (Execl (x,y)) = undefined
+progAtt = V4 (V2 57.5 15) (V2 7.5 15) (V2 7.5 0) (V2 0 0)
+platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 0 0)
+intAtt = V4 (V2 50 10) (V2 0 10) (V2 0 0) (V2 0 30)
+compAtt = V4 (V2 100 10) (V2 150 30) (V2 100 0) (V2 0 0)
 
-attachProgram :: Connect -> Attach
-attachProgram c = Attach {compIn = CompIn (x + 57.5, y + 15), compOut = CompOut (x + 7.5, y + 15), impl = Impl (x + 7.5, y)}
-  where (x,y) = calcProgram c
+attachProgram = attach Prog progAtt
+attachPlatform = attach Plat platAtt
+attachInterpreter =  attach Inter intAtt
+attachCompiler = attach Comp compAtt
 
-rangeProgram :: Connect -> ((Double, Double), (Double, Double))
-rangeProgram c = (xrange, yrange)
-  where (x,y) = calcProgram c
-        xrange = (x, x +  65)
-        yrange = (y, y + 30)
+attach :: DiagramType -> M42 Double -> Connect -> Attach
+attach t displacement con = fromM42 mnew
+  where mnew = (V4 base base base base) !+! displacement
+        base = orig t con
+
+progRange = V2 (V2 0 65) (V2 0 30)
+platRange = V2 (V2 0 50) (V2 0 30)
+intRange  = V2 (V2 0 50) (V2 0 30)
+compRange  = V2 (V2 0 150) (V2 0 30)
+
+rangeProgram = range Prog progRange
+rangePlatform = range Plat platRange
+rangeInterpreter = range Inter intRange
+rangeCompiler = range Comp compRange
+
+range :: DiagramType -> V2 (Point) -> Connect -> V2 (Point)
+range d displacement c = (transpose (V2 base base)) !+! displacement
+  where base = orig d c
 
 
 mkPlatform' :: Point -> String -> Commands
-mkPlatform' (x,y) m = 
-  [ Put (x+0,y-30+15) (Line (5,-3) 25)
-  , Put (x+25,y-30+0) (Line (5,3) 25)
-  , Put (x+0,y-30+15) (Line (0,1) 15)
-  , Put (x+0,y-30+30) (Line (1,0) 50)
-  , Put (x+50,y-30+30) (Line (0,-1) 15)
-  , Put (x+0,y-30+15) (Makebox (50,15) m)
+mkPlatform' (V2 x y) m = 
+  [ Put (x, y+15) (Line (5,-3) 25)
+  , Put (x+25, y) (Line (5,3) 25)
+  , Put (x, y+15) (Line (0,1) 15)
+  , Put (x, y+30) (Line (1,0) 50)
+  , Put (x+50, y+30) (Line (0,-1) 15)
+  , Put (x, y+15) (Makebox (50,15) m)
   ]
 
-mkInterpreter :: (Double, Double) -> String -> String -> String -> Commands
-mkInterpreter (x,y) i l m = 
-  [ Put (x+0,y-30+0) (Framebox (50,30) "")
-  , Put (x+0,y-30+20) (Makebox (50,10) l)
-  , Put (x+0,y-30+10) (Makebox (50,10) i)
-  , Put (x+0,y-30+0) (Makebox (50,10) m)
+mkInterpreter' :: Point -> String -> String -> String -> Commands
+mkInterpreter' (V2 x y) i l m = 
+  [ Put (x, y) (Framebox (50,30) "")
+  , Put (x, y+20) (Makebox (50,10) l)
+  , Put (x, y+10) (Makebox (50,10) i)
+  , Put (x, y) (Makebox (50,10) m)
   ]
 
-mkCompiler :: (Double, Double) -> String -> String -> String -> String -> Commands
-mkCompiler (x,y) c l1 l2 m = 
-  [ Put (x+50,y-20+0) (Line (0,1) 20)
-  , Put (x+50,y-20+20) (Line (-1,0) 50)
-  , Put (x+0,y-20+20) (Line (0,1) 10)
-  , Put (x+0,y-20+30) (Line (1,0) 150)
-  , Put (x+150,y-20+30) (Line (0,-1) 10)
-  , Put (x+150,y-20+20) (Line (-1,0) 50)
-  , Put (x+100,y-20+20) (Line (0,-1) 20)
-  , Put (x+100,y-20+0) (Line (-1,0) 50)
-  , Put (x+0,y-20+20) (Makebox (50,10) l1)
-  , Put (x+50,y-20+20) (Makebox (50,10) "$\\longrightarrow$")
-  , Put (x+100,y-20+20) (Makebox (50,10) l2)
-  , Put (x+50,y-20+10) (Makebox (50,10) c)
-  , Put (x+50,y-20+0) (Makebox (50,10) m)
+mkCompiler' :: Point -> String -> String -> String -> String -> Commands
+mkCompiler' (V2 x y) c l1 l2 m = 
+  [ Put (x+50, y) (Line (0,1) 20)
+  , Put (x+50, y+20) (Line (-1,0) 50)
+  , Put (x, y+20) (Line (0,1) 10)
+  , Put (x, y+30) (Line (1,0) 150)
+  , Put (x+150, y+30) (Line (0,-1) 10)
+  , Put (x+150, y+20) (Line (-1,0) 50)
+  , Put (x+100, y+20) (Line (0,-1) 20)
+  , Put (x+100, y) (Line (-1,0) 50)
+  , Put (x, y+20) (Makebox (50,10) l1)
+  , Put (x+50, y+20) (Makebox (50,10) "$\\longrightarrow$")
+  , Put (x+100, y+20) (Makebox (50,10) l2)
+  , Put (x+50, y+10) (Makebox (50,10) c)
+  , Put (x+50, y) (Makebox (50,10) m)
  ]
 }
 

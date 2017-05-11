@@ -22,28 +22,28 @@ extra-source-files:    AUTHORS, Makefile, src/CCO/Diag/AG.ag,
   
 executable parse-tdiag
   main-is:             ParseTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, containers, linear, lens
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
                        CCO.Diag.Parser, CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
 
 executable tc-tdiag
   main-is:             TypeCheckTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, containers, linear, lens
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
                        CCO.Diag.Parser, CCO.Diag.TypeChecking, CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
   
 executable tdiag2picture
   main-is:             TDiag2Picture.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
+  build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0, linear, lens
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
                        CCO.Diag.Parser, CCO.Picture.AG, CCO.Picture, CCO.D2P
   hs-source-dirs:      src
   
 executable pp-picture
   main-is:             PpPicture.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, containers, linear, lens
   other-modules:       CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
 
@@ -52,4 +52,4 @@ test-suite spec
   main-is: Spec.hs
   hs-source-dirs: test, src
   other-modules: CCO.D2P, CCO.Diag.AG, CCO.Diag.Base, CCO.Picture, CCO.Picture.AG
-  build-depends:      base, hspec, uu-cco, parsec, split, process
+  build-depends:      base, hspec, uu-cco, parsec, split, process, linear, lens
