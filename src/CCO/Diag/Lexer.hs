@@ -2,6 +2,7 @@
 -- |
 -- Module      :  CCO.Diag.Lexer
 -- Copyright   :  (c) 2008 Utrecht University
+--                    2017 Wout Elsinghorst, Xander van der Goot
 -- License     :  All rights reserved
 --
 -- Maintainer  :  stefan@cs.uu.nl
@@ -68,7 +69,11 @@ keyword_ = fmap Keyword $ string "compiler" <|> string "compile" <|>
                           string "interpreter" <|> string "on" <|>
                           string "platform" <|> string "program" <|>
                           string "to" <|> string "with" <|> 
-                          string "use" <|> string "let" <|> string "[" <|> string "]" <|> string "," <|> string "="
+                          -- Added to implement Let-bindings
+                          string "use" <|> string "let" <|> string "[" <|> string "]" <|> string "," <|> string "=" <|>
+                          -- Added to implement Type Signatures
+                          string "::" <|> string "{" <|> string "}" <|> string "{!" <|> string "!}" <|> string "~>" <|> string "/" <|>
+                          string "Program" <|> string "Compiler" <|> string "Interpreter" <|> string "Platform"
 
 -- | A 'Lexer' that recognises 'Ident' tokens.
 ident_ :: Lexer Token

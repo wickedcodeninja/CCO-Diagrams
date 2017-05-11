@@ -1,4 +1,4 @@
--- (C) 2017 Wout Elsinghorst
+-- (C) 2017 Wout Elsinghorst, Xander van der Goot
 
 optpragmas
 {
@@ -14,11 +14,11 @@ import Data.Maybe
 
 {
 
-type DiagTypeEnvironment = [(String, DiagType)]
+type Environment t = [(String, t)]
 
 data Diagnostic 
-  = TyError    SourcePos DiagTypeEnvironment DiagType (Maybe DiagType) String
-  | ScopeError SourcePos DiagTypeEnvironment                           String
+  = TyError    SourcePos (Environment DiagType) DiagType (Maybe DiagType) String
+  | ScopeError SourcePos (Environment DiagType)                           String
 }
 
 -- Position Information
@@ -33,7 +33,7 @@ attr Diag_
 
 sem Diag
   | Diag        d.pos            = @pos
-                d.typeAnnotation = fmap (\(diagName, diagType) -> diagType) @typeAnnotation
+                d.typeAnnotation = @typeAnnotation
 
 -- Semantics
   
@@ -124,7 +124,7 @@ sem Diag_
   | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType) ++ checkTyWithAnnotation @lhs.pos @loc.diagName @loc.diagType @lhs.typeAnnotation
 
 sem Diag
-  | Use         lhs.typeDiagnostics = checkTyUse @pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList)
+  | Use         lhs.typeDiagnostics = checkTyUse @pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList) ++ checkTyWithAnnotation @pos @name @loc.diagType @typeAnnotation
   | Diag        lhs.typeDiagnostics = @binds.typeDiagnostics ++ @d.typeDiagnostics
 
 
@@ -132,15 +132,15 @@ sem Diag
 -- Let bindings
   
 attr Diag Diag_ DiagBinds
-  inh   diagTypeList                :: { [(String, (DiagType)                     )] }
-  inh   implementationLanguageList  :: { [(String, (Either Platform Language)     )] }
-  inh   canExecuteLanguageList      :: { [(String, (Maybe Language)               )] }
-  inh   canTransformLanguageList    :: { [(String, (Maybe SourceAndTargetLanguage))] }
+  inh   diagTypeList                :: { Environment DiagType                        }
+  inh   implementationLanguageList  :: { Environment (Either Platform Language)      }
+  inh   canExecuteLanguageList      :: { Environment (Maybe Language)                }
+  inh   canTransformLanguageList    :: { Environment (Maybe SourceAndTargetLanguage) }
 attr DiagBinds
-  syn   diagTypeList               use {++} { [] } :: { [(String, (DiagType)                     )] }
-  syn   implementationLanguageList use {++} { [] } :: { [(String, (Either Platform Language)     )] }
-  syn   canExecuteLanguageList     use {++} { [] } :: { [(String, (Maybe Language)               )] }
-  syn   canTransformLanguageList   use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
+  syn   diagTypeList               use {++} { [] } :: { Environment DiagType                        }
+  syn   implementationLanguageList use {++} { [] } :: { Environment (Either Platform Language)      }
+  syn   canExecuteLanguageList     use {++} { [] } :: { Environment (Maybe Language)                }
+  syn   canTransformLanguageList   use {++} { [] } :: { Environment (Maybe SourceAndTargetLanguage) }
 
 sem DiagBinds
   | BindCons    lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
@@ -167,13 +167,13 @@ attr Diag Diag_
   syn   flattenedDiag_                    :: { Diag_ }
 
 attr Diag Diag_ DiagBinds
-  inh   flattenedDiagList                 :: { [(String, Diag_)] }
+  inh   flattenedDiagList                 :: { Environment Diag_ }
 attr DiagBinds
-  syn   flattenedDiagList use {++} { [] } :: { [(String, Diag_)] }
+  syn   flattenedDiagList use {++} { [] } :: { Environment Diag_ }
 
 sem Diag
-  | Diag        lhs.flattenedDiag  = Diag @pos (Just (@loc.diagName, @loc.diagType)) BindNil $ @d.flattenedDiag_
-  | Use         lhs.flattenedDiag  = Diag @pos (Just (@loc.diagName, @loc.diagType)) BindNil $ @loc.flattenedDiag_
+  | Diag        lhs.flattenedDiag  = Diag @pos BindNil (Just @loc.diagType) $ @d.flattenedDiag_
+  | Use         lhs.flattenedDiag  = Diag @pos BindNil (Just @loc.diagType) $ @loc.flattenedDiag_
                 loc.flattenedDiag_ = fromJust (lookup @name @lhs.flattenedDiagList)
                 
 sem Diag_
@@ -198,9 +198,9 @@ sem Diagram
 attr Diag Diag_
   syn   diagName                     :: { Ident }
 attr Diag Diag_ DiagBinds
-  inh   diagNameList                 :: { [(String, Ident)] }
+  inh   diagNameList                 :: { Environment Ident }
 attr DiagBinds
-  syn   diagNameList use {++} { [] } :: { [(String, Ident)] }
+  syn   diagNameList use {++} { [] } :: { Environment Ident }
 
   
 sem Diag
@@ -226,7 +226,7 @@ sem Diagram
   
 -- Type Checking Specific Diagrams
 {
-checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyExecute :: SourcePos -> Environment DiagType -> DiagType -> DiagType -> [Diagnostic]
 checkTyExecute pos env d1 d2 =
   case (coerceExecutable d1, coerceExecutor d2) of
     ( Just (Type_Executable l1), Just (Type_Executor l2) ) | l1 == l2 -> []
@@ -235,7 +235,7 @@ checkTyExecute pos env d1 d2 =
     ( Nothing                  , Just (Type_Executor l2) )            -> [TyError pos env d1 (Just (Type_Executable  l2)) $ "/Execute/: The type inferred for the first diagram is not executable."]
     ( Nothing                  , Nothing                 )            -> [TyError pos env d1 (Nothing                   ) $ "/Execute/: The type inferred for the first diagram is not a subtype of `Executable`."]
 
-checkTyCompile :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyCompile :: SourcePos -> Environment DiagType -> DiagType -> DiagType -> [Diagnostic]
 checkTyCompile pos env d1 d2 =
   case (coerceExecutable d1, coerceTransformer d2) of
     ( Just (Type_Executable l1), Just (Type_Transformer (l2, _)) ) | l1 == l2 -> []
@@ -250,7 +250,7 @@ checkTyWithAnnotation pos diagName inferredType (Just typeAnnotation)
   | inferredType == typeAnnotation = []
   | otherwise                      = [TyError pos [] inferredType (Just typeAnnotation) $ "The provided type signature for the composite diagram '" ++ diagName ++ "' doesn't match the inferred type."] 
 
-checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [Diagnostic]
+checkTyUse :: SourcePos -> Environment DiagType -> String -> Maybe DiagType -> [Diagnostic]
 checkTyUse pos env name (Just typ) = []
 checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" ++ name ++ "' is not in scope."] 
 }
@@ -313,7 +313,7 @@ createDiagFromType nm (Type_Platform          m        ) = Platform m
 createDiagFromType nm (_                               ) = Platform "T"
 
 wrapDiag :: Diag_ -> Diag
-wrapDiag = Diag (SourcePos Stdin EOF) Nothing BindNil 
+wrapDiag = Diag (SourcePos Stdin EOF) BindNil Nothing
 }
 
 

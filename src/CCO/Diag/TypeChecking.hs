@@ -1,3 +1,5 @@
+-- (C) 2017 Wout Elsinghorst, Xander van der Goot
+
 module CCO.Diag.TypeChecking where
 
 import CCO.Component  (Component, component, printer, ioWrap)
