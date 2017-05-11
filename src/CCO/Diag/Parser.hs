@@ -73,9 +73,7 @@ pDiag_ = pProgram <|> pPlatform <|> pInterpreter <|> pCompiler <|>
 
 -- | Parses a 'Platform'.
 pPlatform :: TokenParser (Maybe DiagType, Diag_)
-pPlatform = (,) <$> pure Nothing
-                <*> ( Platform <$ keyword "platform" <*> ident
-                    )
+pPlatform = (\f (m, diagType) -> (diagType, f m) ) <$> (Platform <$ keyword "platform") <*> pTypeSignature ident
 
 -- | Parses a 'Program'.
 pProgram :: TokenParser (Maybe DiagType, Diag_)
