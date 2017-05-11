@@ -107,13 +107,13 @@ We have designed a subtyping hierarchy for our diagram language which explains t
 
 In our chosen semantics, all compilable programs are executable and vice versa, so in the following we'll make the simplification of treating `Compilable` and `Executable` as synonyms. The following deductions are valid for diagrams written in the Diagram language:
 
- - `Executable`s, and only `Executable`s, are executed by an `Executor`
- - `Executable`s, and only `Executable`s, are compiled by an `Compiler`
+ - `Executables`, and only `Executables`, can be executed by an `Executor`
+ - `Executables`, and only `Executables`, can be compiled by an `Compiler`
  
- - `Program`s, `Interpreter`s and `Compiler`s are initially `Executable`
- - `Platform`s are never `Executable`
+ - `Programs`, `Interpreter`s and `Compilers` are initially `Executable`
+ - `Platforms` are never `Executable`
  
- - `Platform`s and `Interpreter`s are `Executor`s
+ - `Platforms` and `Interpreters` are `Executors`
  
  - The statement `compile d1 on d2` is `Executable`
  - The statement `execute d1 on d2` is not `Executable`
@@ -126,7 +126,7 @@ In our chosen semantics, all compilable programs are executable and vice versa, 
  
  - The `inputLanguage` of `platform m` is `m`
  - The `inputLanguage` of `interpreter c for l in m` is `l`
- - The `inputLanguage` of `compiler c from l1 to l2 in m` is `l2`
+ - The `inputLanguage` of `compiler c from l1 to l2 in m` is `l1`
  
  - The `outputLanguage` of `compiler c from l1 to l2 in m` is `l2`
  
@@ -154,8 +154,8 @@ The type rules defined in the chapter `Formal Semantics` where implemented using
  - `syn canCompileLanguage :: Maybe (Language, Language)`
  - `syn implementationLanguage :: Either (Platform, Language)`
  
- The rules `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely it contains whether the diagram represented by this node is an `Executor` or not, and it contains the precise `inputLanguage` language makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
- The `implementationLanguage` attribute decides whether the diagram is `Executable` or not, and if so it gives the `implementationLanguage` in the `Right` constructor while the `Left` constructor contains the platform it is running on if it is not. For each node, the value of these attributes is easily expressed in terms of the values of any the sub-diagrams of that node, with the implementation so obvious that we will describe it here. 
+ The rules `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely it contains whether the diagram represented by this node is an `Executor` or not, and if it does it contains the precise `inputLanguage` which makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
+ The `implementationLanguage` attribute decides whether the diagram is `Executable` or not, and if so it gives the `implementationLanguage` in the `Right` constructor or platform on which it is running in the `Left` constructor. For each node, the value of these attributes is easily expressed in terms of the values of any the sub-diagrams of that node, with the implementation so obvious that we will not describe it here. 
  
  To implement `let`-binds, an environment is constructed for each of the attributes listed above, mapping the identifier for the diagram to the corresponding attribute. The attributes for a `use` statements are calculated by performing a simple lookup in the previously constructed environment. As is usual, the environments synthesized from a list of `let`-bound are fed back into that same list as inherited attributes so that the declared diagrams become available within the list of declaration where they were originally declared in.
  
