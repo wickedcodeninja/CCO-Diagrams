@@ -16,7 +16,10 @@ build-type:            Simple
 cabal-version:         >= 1.8
 extra-source-files:    AUTHORS, Makefile, src/CCO/Diag/AG.ag,
                        src/CCO/Diag/AG/Base.ag, src/CCO/Picture/AG.ag,
-                       src/CCO/Picture/AG/Base.ag, 
+                       src/CCO/Picture/AG/Base.ag,
+                       src/CCO/Picture/AG/Semantics.ag,
+                       src/CCO/Picture/AG/TypeChecking.ag,
+                       src/CCO/Picture/AG/TPicture.ag,
                        src/CCO/Picture/AG/Printing.ag
 
   
