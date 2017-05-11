@@ -56,34 +56,34 @@ sem Diagram
 --            language.
 
 attr Diag Diag_
-  syn   canTransformLanguage :: { Maybe SourceAndTargetLanguage }
+  syn   canCompileLanguage :: { Maybe SourceAndTargetLanguage }
 attr Diag Diag_ DiagBinds
-  inh   canTransformLanguageList :: { Environment (Maybe SourceAndTargetLanguage) }
+  inh   canCompileLanguageList :: { Environment (Maybe SourceAndTargetLanguage) }
 attr DiagBinds
-  syn   canTransformLanguageList use {++} { [] } :: { Environment (Maybe SourceAndTargetLanguage) }
+  syn   canCompileLanguageList use {++} { [] } :: { Environment (Maybe SourceAndTargetLanguage) }
 
 sem Diag_
-  | Program     loc.canTransformLanguage = Nothing
-  | Compiler    loc.canTransformLanguage = Just (@l1, @l2)
+  | Program     loc.canCompileLanguage = Nothing
+  | Compiler    loc.canCompileLanguage = Just (@l1, @l2)
   
-  | Platform    loc.canTransformLanguage = Nothing
-  | Interpreter loc.canTransformLanguage = Nothing
+  | Platform    loc.canCompileLanguage = Nothing
+  | Interpreter loc.canCompileLanguage = Nothing
       
-  | Execute     loc.canTransformLanguage = @d1.canTransformLanguage
-  | Compile     loc.canTransformLanguage = @d1.canTransformLanguage
+  | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
+  | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
   
 sem Diag
-  | Use         lhs.canTransformLanguage = fromJust (lookup @name @lhs.canTransformLanguageList)
+  | Use         lhs.canCompileLanguage = fromJust (lookup @name @lhs.canCompileLanguageList)
  
  
 sem DiagBinds
-  | BindCons    lhs.canTransformLanguageList   = (@name, @d.canTransformLanguage)   : @ds.canTransformLanguageList
+  | BindCons    lhs.canCompileLanguageList = (@name, @d.canCompileLanguage) : @ds.canCompileLanguageList
   
 sem Diag
-  | Diag        loc.canTransformLanguageList   = @binds.canTransformLanguageList   ++ @lhs.canTransformLanguageList
+  | Diag        loc.canCompileLanguageList = @binds.canCompileLanguageList ++ @lhs.canCompileLanguageList
 
 sem Diagram
-  | Diagram     d.canTransformLanguageList = []
+  | Diagram     d.canCompileLanguageList = []
   
 
 -- Semantics: Whether the diagram represented by this node is Executable or 
@@ -108,7 +108,7 @@ sem Diag_
   | Execute     loc.implementationLanguage = case @d2.implementationLanguage of
                                                Right l       -> Left l
                                                Left  m       -> Left m
-  | Compile     loc.implementationLanguage = case @d2.canTransformLanguage of
+  | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
                                                Just (l1, l2) -> Right l2
                                                Nothing       -> Left "<invalid>"
 sem Diag

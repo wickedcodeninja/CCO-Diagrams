@@ -179,7 +179,7 @@ empty_Diag_ =
     
     diagTypeList_Inh_Diag_ = [], 
     canExecuteLanguageList_Inh_Diag_ = [], 
-    canTransformLanguageList_Inh_Diag_ = [], 
+    canCompileLanguageList_Inh_Diag_ = [], 
     implementationLanguageList_Inh_Diag_ = [],
     flattenedDiagList_Inh_Diag_ = [],
     diagNameList_Inh_Diag_ = [],

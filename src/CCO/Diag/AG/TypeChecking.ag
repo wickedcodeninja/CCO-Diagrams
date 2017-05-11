@@ -41,7 +41,7 @@ attr DiagBinds
   
 sem Diag_
   | Program     loc.diagType = mkProgramType  @implementationLanguage                    
-  | Compiler    loc.diagType = mkCompilerType @implementationLanguage @canTransformLanguage 
+  | Compiler    loc.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
   
   | Platform    loc.diagType = mkPlatformType @canExecuteLanguage  
   | Interpreter loc.diagType = mkInterpreterType @implementationLanguage @canExecuteLanguage  

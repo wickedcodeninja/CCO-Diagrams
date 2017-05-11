@@ -1,17 +1,17 @@
 name:                  tdiagrams
 version:               0.0.5.0
 synopsis:              Utilities for drawing T-diagrams in LaTeX
-description:           Project distribution for Mini Project B of the course on
+description:           Solution for Mini Project B of the course on
                        Compiler Construction (INFOMCCO) at Utrecht University.
 license:               AllRightsReserved
 license-file:          LICENSE
 category:              Compilers/Interpreters
-copyright:             (c) 2008-2014 Utrecht University
-author:                Stefan Holdermans
+copyright:             (c) 2008-2014 Utrecht University, (c) 2017 Wout Elsinghorst, Xander van der Goot
+author:                Stefan Holdermans, Wout Elsinghorst, Xander van der Goot
 maintainer:            Stefan Holdermans <stefan@cs.uu.nl>
 stability:             provisional
 homepage:              http://www.cs.uu.nl/wiki/Cco/MiniProjects
-tested-with:           GHC == 6.8.2, GHC == 6.8.3, GHC == 6.10.1
+tested-with:           GHC == 6.8.2, GHC == 6.8.3, GHC == 6.10.1, GHC == 8.0.2
 build-type:            Simple
 cabal-version:         >= 1.8
 extra-source-files:    AUTHORS, Makefile, src/CCO/Diag/AG.ag,
@@ -25,14 +25,14 @@ extra-source-files:    AUTHORS, Makefile, src/CCO/Diag/AG.ag,
   
 executable parse-tdiag
   main-is:             ParseTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, uuagc
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
                        CCO.Diag.Parser, CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
 
 executable tc-tdiag
   main-is:             TypeCheckTDiag.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
   other-modules:       CCO.Diag, CCO.Diag.AG, CCO.Diag.Base, CCO.Diag.Lexer,
                        CCO.Diag.Parser, CCO.Diag.TypeChecking, CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
@@ -46,7 +46,7 @@ executable tdiag2picture
   
 executable pp-picture
   main-is:             PpPicture.hs
-  build-depends:       base, uu-cco >= 0.1.0.1, containers
+  build-depends:       base, uu-cco >= 0.1.0.1, uuagc >= 0.9.52.0
   other-modules:       CCO.Picture, CCO.Picture.AG
   hs-source-dirs:      src
 
