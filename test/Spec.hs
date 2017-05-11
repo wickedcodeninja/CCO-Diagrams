@@ -20,19 +20,19 @@ test n d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSp
                 generate_tex n a
                 replace ".0" "" a `shouldBe` filter (not . isSpace) t
 
-dprog = Diag sp (BindNil) (Program "hello" "Haskell")
+dprog = Diag sp Nothing (BindNil) (Program "hello" "Haskell")
 
-dplat = Diag sp (BindNil) (Platform "i686-windows")
+dplat = Diag sp Nothing (BindNil) (Platform "i686-windows")
 
-dint = Diag sp (BindNil) (Interpreter "hugs" "Haskell"  "i686-windows")
+dint = Diag sp Nothing (BindNil) (Interpreter "hugs" "Haskell"  "i686-windows")
 
-dcomp = Diag sp (BindNil) (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
+dcomp = Diag sp Nothing (BindNil) (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
 
-dpint = Diag sp (BindNil) (Execute dprog dint)
+dpint = Diag sp Nothing (BindNil) (Execute dprog dint)
 
-dprogcomp = Diag sp (BindNil) (Compile (Diag sp (BindNil) (Program "hello" "UUAG")) dcomp)
+dprogcomp = Diag sp Nothing (BindNil) (Compile (Diag sp Nothing (BindNil) (Program "hello" "UUAG")) dcomp)
 
-dmax = Diag sp (BindNil) (Execute dprogcomp dint)
+dmax = Diag sp Nothing (BindNil) (Execute dprogcomp dint)
 
 main :: IO ()
 main = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dmax

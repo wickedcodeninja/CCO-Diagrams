@@ -4,117 +4,112 @@ import CCO.Picture
 }
 
 {
-data Coords = 
-  Coords {
-    bottom_left :: (Double, Double), 
-    right :: Double, 
-    max_right :: Double, 
-    top :: (Double, Double)
+type Point = (Double, Double)
+type Range = (Double, Double)
+
+data Connect = CompIn Point | CompOut Point | Impl Point | Execl Point
+
+data Attach = 
+  Attach {
+     compIn :: Connect,                
+     compOut :: Connect,
+     impl :: Connect,
+     execl :: Connect
   }
 }
 
 attr Diag_ Diag DiagBinds
-  inh right :: Double
-  inh bottom_left :: {(Double, Double)}
-  inh offset :: Double
+  inh xoffset :: Double
+  inh yoffset :: Double
+  inh connect :: Connect
   
 attr Diag_ Diag
   syn pic :: Commands
-  syn coords :: Coords
+  syn outAttach :: Attach
+  syn xrange :: {(Double, Double)}
+  syn yrange :: {(Double, Double)}
 
 attr Diagram
   syn pic :: {Picture}
 
 sem Diagram 
   | Diagram 
-      lhs.pic = Picture (max_right @d.coords, @loc.ysize) @d.pic
+      lhs.pic = Picture (@loc.xsize, @loc.ysize) @d.pic
                 
-      loc.ysize = (snd . top) @d.coords - (fst . top) @d.coords
+      loc.xsize = snd @d.xrange - fst @d.xrange
+      loc.ysize = snd @d.yrange - fst @d.yrange
+
+      d.xoffset = (abs . fst) @d.xrange
+      d.yoffset = (abs . fst) @d.yrange
+      d.connect = CompOut (0,0)
                 
-      d.bottom_left = (0,0)
-      d.offset      = (abs . fst . top) @d.coords
-      d.right       = 0
+      
        
 sem Diag
   | Use      
       lhs.pic    = []
-      lhs.coords = Coords (0,0) 0 0 (0,0)
+      lhs.xrange = (0,0)
+      lhs.yrange = (0,0)
+      lhs.outAttach = Attach {}
       
 sem Diag_
   | Program 
-      lhs.pic    = mkProgram (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @p @l
-      lhs.coords = Coords @loc.bottom_left @loc.right @loc.max_right (snd @loc.bottom_left, snd @loc.bottom_left + 30)
-            
-      loc.max_right   = @lhs.right + 65
-      loc.right       = @loc.max_right - 7.5
-      loc.bottom_left = (fst @lhs.bottom_left + 7.5, snd @lhs.bottom_left)
+      lhs.pic    = mkProgram @lhs.connect (@lhs.xoffset, @lhs.yoffset) @p @l
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
+
+      loc.ranges = rangeProgram @lhs.connect
+
             
   | Platform 
-      lhs.pic    = mkPlatform (fst @lhs.bottom_left, snd @lhs.bottom_left + @lhs.offset) @m
-      lhs.coords = Coords (fst @lhs.bottom_left + 25, snd @lhs.bottom_left - 30) @loc.right @loc.right (snd @lhs.bottom_left - 30,snd @lhs.bottom_left)
+      lhs.pic    = []
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
 
-      loc.right  = fst @lhs.bottom_left + 50      
+      loc.ranges = rangeProgram @lhs.connect
       
   | Interpreter 
-      lhs.pic    = mkInterpreter (@loc.left,snd @lhs.bottom_left + @lhs.offset) @i @l @m
-      lhs.coords = Coords (fst @lhs.bottom_left, @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left)
+      lhs.pic    = []
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
 
-      loc.left          = fst @lhs.bottom_left
-      loc.right         = @loc.left + 50
-      loc.bottom_left_y = snd @lhs.bottom_left - 30
+      loc.ranges = rangeProgram @lhs.connect
       
   | Compiler 
-      lhs.pic    = mkCompiler (@lhs.right,snd @lhs.bottom_left + @lhs.offset) @c @l1 @l2 @m
-      lhs.coords = Coords (@lhs.right+50 , @loc.bottom_left_y) @loc.right @loc.right (@loc.bottom_left_y, snd @lhs.bottom_left + 10)
-      
-      loc.right         = @lhs.right + 150
-      loc.bottom_left_y = snd @lhs.bottom_left - 20
+      lhs.pic    = []
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
+
+      loc.ranges = rangeProgram @lhs.connect
       
   | Execute 
-      lhs.pic    = @d1.pic ++ @d2.pic
-      lhs.coords = Coords (bottom_left @d2.coords) (right @d2.coords) @loc.max_right (@loc.ymin,@loc.ymax)
-     
-      d1.bottom_left = @lhs.bottom_left
-      d1.right       = @lhs.right
-     
-      d2.bottom_left = bottom_left @d1.coords
-      d2.right       = right @d1.coords
-     
-      loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
-      loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
-     
-      loc.max_right = max (max_right @d1.coords) (max_right @d2.coords)
+      lhs.pic    = []
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
+
+      loc.ranges = rangeProgram @lhs.connect
      
   | Compile 
-      lhs.pic    = @d1.pic ++ @d2.pic ++ (pic_Syn_Diag_ @loc.d3)
-      lhs.coords = Coords @loc.bottom_left (right @loc.coords_d3) (max_right @loc.coords_d3) (@loc.ymin, @loc.ymax)
-      
-      d1.bottom_left = @lhs.bottom_left
-      d1.right       = @lhs.right
-      
-      d2.bottom_left = bottom_left @d1.coords
-      d2.right       = right @d1.coords
-      
-      loc.ymin = min (fst (top @d1.coords)) (fst (top @d2.coords))
-      loc.ymax = max (snd (top @d1.coords)) (snd (top @d2.coords))
-      
-      loc.emptyDiag_Inh = 
-        empty_Diag_ {
-          offset_Inh_Diag_      = @lhs.offset, 
-          bottom_left_Inh_Diag_ = @loc.bottom_left_d3, 
-          right_Inh_Diag_       = right @d2.coords - 7.5
-        }
-        
-      loc.summaryDiag = createDiagFromType @loc.diagName @loc.diagType
-      loc.d3          = wrap_Diag_ (sem_Diag_ @loc.summaryDiag) @loc.emptyDiag_Inh
-      
-      loc.bottom_left_d3 = (right @d2.coords, (snd . bottom_left) @d1.coords)
-      loc.bottom_left    = (right @d2.coords, (snd . bottom_left) @d1.coords)
-      loc.coords_d3      = coords_Syn_Diag_ @loc.d3
+      lhs.pic    = []
+      lhs.outAttach = attachProgram @lhs.connect
+      lhs.yrange = snd @loc.ranges
+      lhs.xrange = fst @loc.ranges
+
+      loc.ranges = rangeProgram @lhs.connect
 
 {
-mkProgram :: (Double, Double) -> String -> String -> Commands
-mkProgram (x,y) p l = 
+
+mkProgram :: Connect -> Point -> String -> String -> Commands
+mkProgram c (xo, yo) = mkProgram' (xnew, ynew)
+  where (x,y)  = calcProgram c
+        (xnew, ynew) = (x + xo, y + yo)
+
+mkProgram' (x,y) p l = 
   [ Put (x+7.5,y+0) (Line (1,0) 50)
   , Put (x+7.5,y+0) (Line (0,1) 15)
   , Put (x+7.5,y+15) (Line (-1,2) 7.5)
@@ -125,8 +120,25 @@ mkProgram (x,y) p l =
   , Put (x+7.5,y+0) (Makebox (50,15) l)
   ]
 
-mkPlatform :: (Double, Double) -> String -> Commands
-mkPlatform (x,y) m = 
+calcProgram :: Connect -> Point
+calcProgram (CompIn (x,y))  = (x - 57.5 , y - 15)
+calcProgram (CompOut (x,y))  = (x - 7.5, y - 15)
+calcProgram (Impl (x,y))  = (x - 7.5, y)
+calcProgram (Execl (x,y)) = undefined
+
+attachProgram :: Connect -> Attach
+attachProgram c = Attach {compIn = CompIn (x + 57.5, y + 15), compOut = CompOut (x + 7.5, y + 15), impl = Impl (x + 7.5, y)}
+  where (x,y) = calcProgram c
+
+rangeProgram :: Connect -> ((Double, Double), (Double, Double))
+rangeProgram c = (xrange, yrange)
+  where (x,y) = calcProgram c
+        xrange = (x, x +  65)
+        yrange = (y, y + 30)
+
+
+mkPlatform' :: Point -> String -> Commands
+mkPlatform' (x,y) m = 
   [ Put (x+0,y-30+15) (Line (5,-3) 25)
   , Put (x+25,y-30+0) (Line (5,3) 25)
   , Put (x+0,y-30+15) (Line (0,1) 15)
@@ -170,10 +182,6 @@ renderDiagram diagram = pic_Syn_Diagram (wrap_Diagram (sem_Diagram diagram) Inh_
 empty_Diag_ =
   Inh_Diag_ {
     pos_Inh_Diag_ = SourcePos Stdin EOF,
-  
-    bottom_left_Inh_Diag_ = (0,0), 
-    offset_Inh_Diag_ = 0, 
-    right_Inh_Diag_ = 0, 
     
     diagTypeList_Inh_Diag_ = [], 
     canExecuteLanguageList_Inh_Diag_ = [], 
