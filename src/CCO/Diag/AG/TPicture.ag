@@ -104,12 +104,14 @@ sem Diag_
       loc.ranges = rangeCompiler @lhs.connect
       
   | Execute 
-      lhs.pic    = []
-      lhs.outAttach = attachCompiler @lhs.connect
-      lhs.yrange = @loc.ranges ^. _y
-      lhs.xrange = @loc.ranges ^. _x
+      lhs.pic    = @d1.pic ++ @d2.pic
+      lhs.outAttach = @d2.outAttach
+      lhs.yrange = ranges @d1.yrange @d2.yrange
+      lhs.xrange = ranges @d1.xrange @d2.xrange
 
-      loc.ranges = rangeCompiler @lhs.connect
+      d1.connect = @lhs.connect
+      d2.connect = (Execl . getPoint . impl) @d1.outAttach
+
      
   | Compile 
       lhs.pic    = []
@@ -120,6 +122,11 @@ sem Diag_
       loc.ranges = rangeProgram @lhs.connect
 
 {
+
+ranges :: V2 Double -> V2 Double -> V2 Double
+ranges f s = V2 rmin rmax
+  where rmin = min (f ^. _x) (s ^. _x)
+        rmax = max (f ^. _y) (s ^. _y)
 
 progOrig  = V4 (V2 (-57.5) (-15)) (V2 (-7.5) (-15)) (V2 (-7.5) 0) (V2 0 0)
 platOrig  = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 (-30) 0)
