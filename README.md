@@ -175,8 +175,8 @@ In our chosen semantics, all compilable programs are executable and vice versa, 
  - The `implementationLanguage` of `compile d1 with d2` is the `outputLanguage` of `d2`
 
  - The `platformLanguage` of `platform m` is `m`
- - The `platformLanguage` of `execute d1 on d2` the `implementationLanguage` of `d2` if `d2` is `Executable`
- - The `platformLanguage` of `execute d1 on d2` the `platformLanguage` of `d2` if `d2` is not `Executable`
+ - The `platformLanguage` of `execute d1 on d2` is the `implementationLanguage` of `d2` if `d2` is `Executable`
+ - The `platformLanguage` of `execute d1 on d2` is the `platformLanguage` of `d2` if `d2` is not `Executable`
  
  - The basic `program`, `interpreter`, `compiler` and `platform` statements are type-correct
  - The statement `execute d1 on d2` is type-correct if `d1` and `d2` are both type-correct, `d1` is an `Executable`, `d2` is an `Executor` and the `implementationLanguage` of `d1` matches the `inputLanguage` of `d2` 
@@ -203,7 +203,7 @@ The type rules defined in the chapter `Formal Semantics` where implemented using
  
      checkTyExecute, checkTyCompile :: SourcePos -> Environment DiagType -> DiagType -> DiagType -> [Diagnostic]
      
- The subdiagrams are tried for coercion to the required types, and if all coercions succeed and languages match then no error is given. If something is wrong, an error is reported, which indicates which of the arguments wasn't coercible to the required type. The `Environment DiagType` argument is used to show a list of relevent bindings currently in scope. The list of error messages generated for a given node is synthesised in the `typeDiagnostics` attribute, although only the first entry of this list is ever displayed, if any.
+ The subdiagrams are tried for coercion to the required types, and if all coercions succeed and the languages match then no error is given. If something is wrong, an error is reported, which indicates which of the arguments wasn't coercible to the required type. The `Environment DiagType` argument is used to show a list of relevent bindings currently in scope. The list of error messages generated for a given node is synthesised in the `typeDiagnostics` attribute, although only the first entry of this list is ever displayed, if any.
  
 The implementation of the main semantic rules `canExecuteLanguage`, `canCompileLanguage` and `implementationLanguage` can be found in the file `CCO/Diag/AG/Semantics.ag`. The rules for `diagType` and `typeDiagnostics` and the implementations for `checkTyExecute` and `checkTyCompile` can be found in the file `CCO/Diag/AG/TypeChecking.ag`.
 
