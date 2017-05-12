@@ -67,7 +67,7 @@ sem Diag
       lhs.pic    = []
       lhs.xrange = (V2 0 0)
       lhs.yrange = (V2 0 0)
-      lhs.outAttach = Attach {}
+      lhs.outAttach = Attach (CompIn (V2 0 0)) (CompOut (V2 0 0)) (Impl (V2 0 0)) (Execl (V2 0 0))
       
 sem Diag_
   | Program 
