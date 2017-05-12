@@ -100,6 +100,12 @@ To allow references to previously bound diagrams, the grammar of the language wa
 
 Here `I` is any identifier that was previously introduced in a `let` block. If `d` is any specific identifier which is out-of-scope, an error message will be given. When `d` is in scope, then for all intends and purposes, every occurrence of the statement `use d` is given the exact same semantics as the diagram referenced to by `d`. Specifically, the statement `use d` has the same type, name and capabilities as the diagram referenced to by `d`. The output of the type checker replaces (inlines) all occurrences of any `use` statement with the corresponding diagram which it refers to, thus eliminating any sharing from the original diagram. The Diagram-To-Picture converter currently relies on this behavior and does not directly support converting any diagrams still containing any `use` statements.
 
+The following is an example of an error message that is output when the programmer references an out of scope variable:
+
+    line 18:column 7: Scope error: /Use/: variable 'myWindows' is not in scope.
+ 
+    ? Relevant bindings: [("myLinux",Platform {! i686-linux !}),("myCompiler",Compiler [ UUAG ] ~> { Haskell } / { i686-windows })]
+
 ## Type Signatures
 
 Our language supports optional type signatures which can be provided to each of the basic diagram constructors. Type signatures (if present) are checked against the inferred types and an error is raised if the expected and inferred types don't match. While type signatures are never necessary and all diagrams can be compiled without supplying any signatures, type signatures greatly enhance diagram readability in diagrams which make heavy use of `let`-bound references. 
