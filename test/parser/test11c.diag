@@ -1,0 +1,13 @@
+compile 
+  compile 
+    compiler ghc from Haskell to C in i686-linux
+  with
+    execute
+      compiler VMWare from i686-linux to i686-windows in arm-android
+    on
+      interpreter google-dev-kit for arm-android in i686-osnix
+    end
+  end
+with
+  compiler wine from i686-windows to i686-linux in arm-android
+end

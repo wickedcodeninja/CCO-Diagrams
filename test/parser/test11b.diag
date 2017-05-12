@@ -1,0 +1,9 @@
+compile 
+  compile 
+    compiler ghc from Haskell to C in i686-linux
+  with
+    compiler VMWare from i686-linux to i686-windows in arm-android
+  end
+with
+  compiler wine from i686-windows to i686-linux in arm-android
+end

@@ -1,0 +1,5 @@
+compile 
+  compiler grammaz from UUAG to Haskell in i686-windows
+with
+  compiler wine from i686-windows to i686-linux in arm-android
+end
