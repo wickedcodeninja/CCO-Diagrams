@@ -114,7 +114,7 @@ sem Diag_
       
   | Execute 
       lhs.pic    = @d1.pic ++ @d2.pic
-      lhs.outAttach = @d2.outAttach
+      lhs.outAttach = @d2.outAttach {source = source @d1.outAttach, target = target @d1.outAttach}
       lhs.yrange = combineRanges @d1.yrange @d2.yrange
       lhs.xrange = combineRanges @d1.xrange @d2.xrange
 

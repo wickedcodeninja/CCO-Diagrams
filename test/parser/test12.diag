@@ -1,0 +1,5 @@
+execute
+  compiler VMWare from i686-linux to i686-windows in arm-android
+on
+  interpreter google-dev-kit for arm-android in i686-osnix
+end
