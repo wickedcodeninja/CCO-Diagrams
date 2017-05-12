@@ -15,6 +15,8 @@ TODO: Iets te krom verwoord
 # Installation
 Required:
 - GHC 8.0.2 or Haskell stack
+- pdfTeX 3.14159265-2.6-1.40.17 (pdflatex)
+- extsizes package for Latex (often included with your TeX distribution)
 
 To build and install this project using Cabal run `make`.
 

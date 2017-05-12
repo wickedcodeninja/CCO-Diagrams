@@ -13,7 +13,7 @@ sp = SourcePos Stdin EOF
 
 replace old new = intercalate new . splitOn old
 
-generate_tex name text = do writeFile (name++".tex") ("\\documentclass{article}\\begin{document}" ++ text ++ "\\end{document}")
+generate_tex name text = do writeFile (name++".tex") ("\\documentclass[8pt]{extarticle}\\begin{document}" ++ text ++ "\\end{document}")
                             createProcess (proc "pdflatex" [name++".tex"])
 
 test n d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) d
