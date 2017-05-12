@@ -42,6 +42,8 @@ To run the test suite use the following command:
 
     make -f stack-makefile test
 
+The directory `test` also contains a few prepared Diagram files which can be manually fed to our toolchain. Specifically, the subdirectory `basic` contains a few basic examples to get you going while the directories `bindings` and `signatures` respectively contain tests which demonstrate our implementation of `let`-bindings and of the optional type signature feature.
+    
 # Functionality 
 
 ## Type Checking
