@@ -18,6 +18,11 @@ module CCO.Diag.Base (
   , Diag (..)      -- instances: Tree
   , Diag_ (..)     -- instances: Tree
   , DiagBinds (..) -- instances: Tree
+  , DiagType (..)  -- instances: Tree
+  
+  , Platform (..)
+  , Language (..)
+  , Implementation (..)
 ) where
 
 import CCO.Diag.AG

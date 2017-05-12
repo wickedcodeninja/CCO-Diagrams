@@ -1,4 +1,4 @@
--- (C) 2017 Wout Elsinghorst
+-- (C) 2017 Wout Elsinghorst, Xander van der Goot
 
 optpragmas
 {
@@ -13,90 +13,35 @@ import Data.Maybe
 }
 
 {
-
-type DiagTypeEnvironment = [(String, DiagType)]
-
 data Diagnostic 
-  = TyError    SourcePos DiagTypeEnvironment DiagType (Maybe DiagType) String
-  | ScopeError SourcePos DiagTypeEnvironment                           String
+  = TyError    SourcePos (Environment DiagType) DiagType (Maybe DiagType) String
+  | ScopeError SourcePos (Environment DiagType)                           String
 }
 
--- Position Information
-  
-attr Diag_ 
-  inh   pos :: { SourcePos }
-  
+
 -- Optional Type Annotations
   
 attr Diag_
   inh   typeAnnotation :: { Maybe DiagType }
 
 sem Diag
-  | Diag        d.pos            = @pos
-                d.typeAnnotation = fmap (\(diagName, diagType) -> diagType) @typeAnnotation
-
--- Semantics
+  | Diag d.typeAnnotation = @typeAnnotation
   
-attr Diag Diag_
-  syn   implementationLanguage :: { Either Platform Language }
-  syn   canExecuteLanguage     :: { Maybe Language }
-  syn   canTransformLanguage   :: { Maybe SourceAndTargetLanguage }
   
-sem Diag_
-  | Program     loc.canExecuteLanguage = Nothing
-  | Compiler    loc.canExecuteLanguage = Nothing
   
-  | Platform    loc.canExecuteLanguage = Just @m
-  | Interpreter loc.canExecuteLanguage = Just @l
-      
-  | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
-  | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
-
-sem Diag
-  | Use         lhs.canExecuteLanguage = fromJust (lookup @name @lhs.canExecuteLanguageList)
-  
-sem Diag_
-  | Program     loc.canTransformLanguage = Nothing
-  | Compiler    loc.canTransformLanguage = Just (@l1, @l2)
-  
-  | Platform    loc.canTransformLanguage = Nothing
-  | Interpreter loc.canTransformLanguage = Nothing
-      
-  | Execute     loc.canTransformLanguage = @d1.canTransformLanguage
-  | Compile     loc.canTransformLanguage = @d1.canTransformLanguage
-  
-sem Diag
-  | Use         lhs.canTransformLanguage = fromJust (lookup @name @lhs.canTransformLanguageList)
-  
-sem Diag_
-  | Program     loc.implementationLanguage = Right @l
-  | Compiler    loc.implementationLanguage = Right @m
-  
-  | Platform    loc.implementationLanguage = Left  @m
-  | Interpreter loc.implementationLanguage = Right @m
-      
-  | Execute     loc.implementationLanguage = case @d2.implementationLanguage of
-                                               Right l       -> Left l
-                                               Left  m       -> Left m
-  | Compile     loc.implementationLanguage = case @d2.canTransformLanguage of
-                                               Just (l1, l2) -> Right l2
-                                               Nothing       -> Left "<invalid>"
-sem Diag
-  | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
-
-
-
--- Type Checking
-
-attr Diag Diag_ DiagBinds Diagram
-  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+-- Type Synthesization
 
 attr Diagram Diag Diag_
   syn   diagType :: { DiagType }
   
+attr Diag Diag_ DiagBinds
+  inh   diagTypeList                :: { Environment DiagType                        }
+attr DiagBinds
+  syn   diagTypeList               use {++} { [] } :: { Environment DiagType                        }
+  
 sem Diag_
   | Program     loc.diagType = mkProgramType  @implementationLanguage                    
-  | Compiler    loc.diagType = mkCompilerType @implementationLanguage @canTransformLanguage 
+  | Compiler    loc.diagType = mkCompilerType @implementationLanguage @canCompileLanguage 
   
   | Platform    loc.diagType = mkPlatformType @canExecuteLanguage  
   | Interpreter loc.diagType = mkInterpreterType @implementationLanguage @canExecuteLanguage  
@@ -112,7 +57,23 @@ sem Diag
 
 sem Diagram
   | Diagram     loc.diagType = @d.diagType
-                                
+
+sem DiagBinds
+  | BindCons    lhs.diagTypeList = (@name, @d.diagType) : @ds.diagTypeList
+  
+sem Diag
+  | Diag        loc.diagTypeList = @binds.diagTypeList ++ @lhs.diagTypeList
+  
+sem Diagram
+  | Diagram     d.diagTypeList = []
+  
+  
+  
+-- Type Checking. Check if the inferred types match the annotations and check if subdiagrams have the expected type.
+  
+attr Diag Diag_ DiagBinds Diagram
+  syn   typeDiagnostics use {++} { [] } :: { [Diagnostic] }
+  
 sem Diag_
   | Program     lhs.typeDiagnostics = checkTyWithAnnotation @lhs.pos @loc.diagName @loc.diagType @lhs.typeAnnotation
   | Compiler    lhs.typeDiagnostics = checkTyWithAnnotation @lhs.pos @loc.diagName @loc.diagType @lhs.typeAnnotation
@@ -124,42 +85,11 @@ sem Diag_
   | Compile     lhs.typeDiagnostics = @d1.typeDiagnostics ++ @d2.typeDiagnostics ++ (checkTyCompile @lhs.pos @lhs.diagTypeList @d1.diagType @d2.diagType) ++ checkTyWithAnnotation @lhs.pos @loc.diagName @loc.diagType @lhs.typeAnnotation
 
 sem Diag
-  | Use         lhs.typeDiagnostics = checkTyUse @pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList)
+  | Use         lhs.typeDiagnostics = checkTyUse @pos @lhs.diagTypeList @name (lookup @name @lhs.diagTypeList) ++ checkTyWithAnnotation @pos @name @loc.diagType @typeAnnotation
   | Diag        lhs.typeDiagnostics = @binds.typeDiagnostics ++ @d.typeDiagnostics
 
 
-
--- Let bindings
-  
-attr Diag Diag_ DiagBinds
-  inh   diagTypeList                :: { [(String, (DiagType)                     )] }
-  inh   implementationLanguageList  :: { [(String, (Either Platform Language)     )] }
-  inh   canExecuteLanguageList      :: { [(String, (Maybe Language)               )] }
-  inh   canTransformLanguageList    :: { [(String, (Maybe SourceAndTargetLanguage))] }
-attr DiagBinds
-  syn   diagTypeList               use {++} { [] } :: { [(String, (DiagType)                     )] }
-  syn   implementationLanguageList use {++} { [] } :: { [(String, (Either Platform Language)     )] }
-  syn   canExecuteLanguageList     use {++} { [] } :: { [(String, (Maybe Language)               )] }
-  syn   canTransformLanguageList   use {++} { [] } :: { [(String, (Maybe SourceAndTargetLanguage))] }
-
-sem DiagBinds
-  | BindCons    lhs.diagTypeList               = (@name, @d.diagType)               : @ds.diagTypeList
-                lhs.implementationLanguageList = (@name, @d.implementationLanguage) : @ds.implementationLanguageList
-                lhs.canExecuteLanguageList     = (@name, @d.canExecuteLanguage)     : @ds.canExecuteLanguageList
-                lhs.canTransformLanguageList   = (@name, @d.canTransformLanguage)   : @ds.canTransformLanguageList
-sem Diag
-  | Diag        loc.diagTypeList               = @binds.diagTypeList               ++ @lhs.diagTypeList
-                loc.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
-                loc.canExecuteLanguageList     = @binds.canExecuteLanguageList     ++ @lhs.canExecuteLanguageList
-                loc.canTransformLanguageList   = @binds.canTransformLanguageList   ++ @lhs.canTransformLanguageList
-
-sem Diagram
-  | Diagram     d.diagTypeList = []
-                d.implementationLanguageList = []
-                d.canTransformLanguageList = []
-                d.canExecuteLanguageList = []
-
--- Flattening
+-- Inlining all Let bindings at their usage sites
 
 attr Diagram Diag
   syn   flattenedDiag                     :: { Diag }
@@ -167,13 +97,13 @@ attr Diag Diag_
   syn   flattenedDiag_                    :: { Diag_ }
 
 attr Diag Diag_ DiagBinds
-  inh   flattenedDiagList                 :: { [(String, Diag_)] }
+  inh   flattenedDiagList                 :: { Environment Diag_ }
 attr DiagBinds
-  syn   flattenedDiagList use {++} { [] } :: { [(String, Diag_)] }
+  syn   flattenedDiagList use {++} { [] } :: { Environment Diag_ }
 
 sem Diag
-  | Diag        lhs.flattenedDiag  = Diag @pos (Just (@loc.diagName, @loc.diagType)) BindNil $ @d.flattenedDiag_
-  | Use         lhs.flattenedDiag  = Diag @pos (Just (@loc.diagName, @loc.diagType)) BindNil $ @loc.flattenedDiag_
+  | Diag        lhs.flattenedDiag  = Diag @pos BindNil (Just @loc.diagType) $ @d.flattenedDiag_
+  | Use         lhs.flattenedDiag  = Diag @pos BindNil (Just @loc.diagType) $ @loc.flattenedDiag_
                 loc.flattenedDiag_ = fromJust (lookup @name @lhs.flattenedDiagList)
                 
 sem Diag_
@@ -192,41 +122,12 @@ sem Diag
 
 sem Diagram
   | Diagram     d.flattenedDiagList = []
-
--- Naming
-
-attr Diag Diag_
-  syn   diagName                     :: { Ident }
-attr Diag Diag_ DiagBinds
-  inh   diagNameList                 :: { [(String, Ident)] }
-attr DiagBinds
-  syn   diagNameList use {++} { [] } :: { [(String, Ident)] }
-
   
-sem Diag
-  | Diag        loc.diagName    = @d.diagName
-  | Use         loc.diagName    = fromJust (lookup @name @lhs.diagNameList)
-
-sem Diag_
-  | Program     loc.diagName    = @p
-  | Platform    loc.diagName    = @m
-  | Compiler    loc.diagName    = @c
-  | Interpreter loc.diagName    = @i
-  | Execute     loc.diagName    = @d1.diagName
-  | Compile     loc.diagName    = @d1.diagName
-
-sem DiagBinds
-  | BindCons    lhs.diagNameList = (@name, @d.diagName) : @ds.diagNameList
   
-sem Diag
-  | Diag        loc.diagNameList = @binds.diagNameList ++ @lhs.diagNameList
-
-sem Diagram
-  | Diagram     d.diagNameList = []
   
--- Type Checking Specific Diagrams
+-- Type Checking Specific Diagram constructions.
 {
-checkTyExecute :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyExecute :: SourcePos -> Environment DiagType -> DiagType -> DiagType -> [Diagnostic]
 checkTyExecute pos env d1 d2 =
   case (coerceExecutable d1, coerceExecutor d2) of
     ( Just (Type_Executable l1), Just (Type_Executor l2) ) | l1 == l2 -> []
@@ -235,7 +136,7 @@ checkTyExecute pos env d1 d2 =
     ( Nothing                  , Just (Type_Executor l2) )            -> [TyError pos env d1 (Just (Type_Executable  l2)) $ "/Execute/: The type inferred for the first diagram is not executable."]
     ( Nothing                  , Nothing                 )            -> [TyError pos env d1 (Nothing                   ) $ "/Execute/: The type inferred for the first diagram is not a subtype of `Executable`."]
 
-checkTyCompile :: SourcePos -> DiagTypeEnvironment -> DiagType -> DiagType -> [Diagnostic]
+checkTyCompile :: SourcePos -> Environment DiagType -> DiagType -> DiagType -> [Diagnostic]
 checkTyCompile pos env d1 d2 =
   case (coerceExecutable d1, coerceTransformer d2) of
     ( Just (Type_Executable l1), Just (Type_Transformer (l2, _)) ) | l1 == l2 -> []
@@ -250,11 +151,12 @@ checkTyWithAnnotation pos diagName inferredType (Just typeAnnotation)
   | inferredType == typeAnnotation = []
   | otherwise                      = [TyError pos [] inferredType (Just typeAnnotation) $ "The provided type signature for the composite diagram '" ++ diagName ++ "' doesn't match the inferred type."] 
 
-checkTyUse :: SourcePos -> DiagTypeEnvironment -> String -> Maybe DiagType -> [Diagnostic]
+checkTyUse :: SourcePos -> Environment DiagType -> String -> Maybe DiagType -> [Diagnostic]
 checkTyUse pos env name (Just typ) = []
 checkTyUse pos env name Nothing    = [ScopeError pos env $ "/Use/: variable '" ++ name ++ "' is not in scope."] 
 }
 
+-- Checking the subtype relation
 {
 coerceExecutor :: DiagType -> Maybe DiagType
 coerceExecutor (Type_Interpreter l _) = Just $ Type_Executor l
@@ -272,6 +174,7 @@ coerceExecutable (Type_Interpreter _ (Right m)) = Just $ Type_Executable m
 coerceExecutable _                              = Nothing
 }
 
+-- Type Construction / Destruction / Modification
 {
 setImplementationLanguage :: Implementation -> DiagType -> DiagType
 setImplementationLanguage m (Type_Program       _ ) = Type_Program       $ m
@@ -301,22 +204,7 @@ mkProgramType :: Implementation -> DiagType
 mkProgramType = Type_Program
 }
 
-{
-createDiagFromType :: Ident -> DiagType -> Diag_
-createDiagFromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
-createDiagFromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
-createDiagFromType nm (Type_Interpreter l     (Right m)) = Interpreter nm l m
-createDiagFromType nm (Type_Interpreter l     (Left  m)) = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
-createDiagFromType nm (Type_Program           (Right l)) = Program nm l
-createDiagFromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
-createDiagFromType nm (Type_Platform          m        ) = Platform m
-createDiagFromType nm (_                               ) = Platform "T"
-
-wrapDiag :: Diag_ -> Diag
-wrapDiag = Diag (SourcePos Stdin EOF) Nothing BindNil 
-}
-
-
+-- External Interface
 {
 checkDiagram :: Diagram -> (Maybe (Diag, DiagType), [Diagnostic])
 checkDiagram diagram =

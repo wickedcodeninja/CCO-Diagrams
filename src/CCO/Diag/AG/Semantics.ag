@@ -1,0 +1,172 @@
+-- (C) 2017 Wout Elsinghorst, Xander van der Goot
+
+imports
+{
+import CCO.Printing
+}
+
+{
+type Environment t = [(String, t)]
+}
+
+-- Position Information
+  
+attr Diag_ 
+  inh   pos :: { SourcePos }
+  
+sem Diag
+  | Diag d.pos            = @pos
+
+-- Semantics: Whether the Diagram represented by this node is able to execute 
+--            another Executable diagram written in this language.
+
+attr Diag Diag_
+  syn   canExecuteLanguage :: { Maybe Language }
+attr Diag Diag_ DiagBinds
+  inh   canExecuteLanguageList :: { Environment (Maybe Language)                }
+attr DiagBinds
+  syn   canExecuteLanguageList use {++} { [] } :: { Environment (Maybe Language)                }
+  
+  
+sem Diag_
+  | Program     loc.canExecuteLanguage = Nothing
+  | Compiler    loc.canExecuteLanguage = Nothing
+  
+  | Platform    loc.canExecuteLanguage = Just @m
+  | Interpreter loc.canExecuteLanguage = Just @l
+      
+  | Execute     loc.canExecuteLanguage = @d1.canExecuteLanguage
+  | Compile     loc.canExecuteLanguage = @d1.canExecuteLanguage
+
+sem Diag
+  | Use         lhs.canExecuteLanguage = fromJust (lookup @name @lhs.canExecuteLanguageList)
+
+sem DiagBinds
+  | BindCons    lhs.canExecuteLanguageList = (@name, @d.canExecuteLanguage) : @ds.canExecuteLanguageList
+
+sem Diag
+  | Diag        loc.canExecuteLanguageList = @binds.canExecuteLanguageList ++ @lhs.canExecuteLanguageList
+
+sem Diagram
+  | Diagram     d.canExecuteLanguageList = []
+  
+  
+-- Semantics: Whether the Diagram represented by this node is able to transform
+--            another Executable diagram from the source language to the target 
+--            language.
+
+attr Diag Diag_
+  syn   canCompileLanguage :: { Maybe SourceAndTargetLanguage }
+attr Diag Diag_ DiagBinds
+  inh   canCompileLanguageList :: { Environment (Maybe SourceAndTargetLanguage) }
+attr DiagBinds
+  syn   canCompileLanguageList use {++} { [] } :: { Environment (Maybe SourceAndTargetLanguage) }
+
+sem Diag_
+  | Program     loc.canCompileLanguage = Nothing
+  | Compiler    loc.canCompileLanguage = Just (@l1, @l2)
+  
+  | Platform    loc.canCompileLanguage = Nothing
+  | Interpreter loc.canCompileLanguage = Nothing
+      
+  | Execute     loc.canCompileLanguage = @d1.canCompileLanguage
+  | Compile     loc.canCompileLanguage = @d1.canCompileLanguage
+  
+sem Diag
+  | Use         lhs.canCompileLanguage = fromJust (lookup @name @lhs.canCompileLanguageList)
+ 
+ 
+sem DiagBinds
+  | BindCons    lhs.canCompileLanguageList = (@name, @d.canCompileLanguage) : @ds.canCompileLanguageList
+  
+sem Diag
+  | Diag        loc.canCompileLanguageList = @binds.canCompileLanguageList ++ @lhs.canCompileLanguageList
+
+sem Diagram
+  | Diagram     d.canCompileLanguageList = []
+  
+
+-- Semantics: Whether the diagram represented by this node is Executable or 
+--            not with `Right l` meaning it to be Executable in language `l` and
+--            `Left m` meaning it is not Executable but running on a platform `m`.
+
+attr Diag Diag_
+  syn   implementationLanguage :: { Either Platform Language }
+attr Diag Diag_ DiagBinds
+  inh   implementationLanguageList :: { Environment (Either Platform Language)      }
+attr DiagBinds
+  syn   implementationLanguageList use {++} { [] } :: { Environment (Either Platform Language)      }
+  
+ 
+sem Diag_
+  | Program     loc.implementationLanguage = Right @l
+  | Compiler    loc.implementationLanguage = Right @m
+  
+  | Platform    loc.implementationLanguage = Left  @m
+  | Interpreter loc.implementationLanguage = Right @m
+      
+  | Execute     loc.implementationLanguage = case @d2.implementationLanguage of
+                                               Right l       -> Left l
+                                               Left  m       -> Left m
+  | Compile     loc.implementationLanguage = case @d2.canCompileLanguage of
+                                               Just (l1, l2) -> Right l2
+                                               Nothing       -> Left "<invalid>"
+sem Diag
+  | Use         lhs.implementationLanguage = fromJust (lookup @name @lhs.implementationLanguageList)
+
+sem DiagBinds
+  | BindCons    lhs.implementationLanguageList = (@name, @d.implementationLanguage) : @ds.implementationLanguageList
+
+sem Diag
+  | Diag        loc.implementationLanguageList = @binds.implementationLanguageList ++ @lhs.implementationLanguageList
+  
+sem Diagram
+  | Diagram     d.implementationLanguageList = []
+  
+  
+-- Semantics: The name of the diagram represented by this node.
+
+attr Diag Diag_
+  syn   diagName                     :: { Ident }
+attr Diag Diag_ DiagBinds
+  inh   diagNameList                 :: { Environment Ident }
+attr DiagBinds
+  syn   diagNameList use {++} { [] } :: { Environment Ident }
+
+  
+sem Diag
+  | Diag        loc.diagName    = @d.diagName
+  | Use         loc.diagName    = fromJust (lookup @name @lhs.diagNameList)
+
+sem Diag_
+  | Program     loc.diagName    = @p
+  | Platform    loc.diagName    = @m
+  | Compiler    loc.diagName    = @c
+  | Interpreter loc.diagName    = @i
+  | Execute     loc.diagName    = @d1.diagName
+  | Compile     loc.diagName    = @d1.diagName
+
+sem DiagBinds
+  | BindCons    lhs.diagNameList = (@name, @d.diagName) : @ds.diagNameList
+  
+sem Diag
+  | Diag        loc.diagNameList = @binds.diagNameList ++ @lhs.diagNameList
+
+sem Diagram
+  | Diagram     d.diagNameList = []
+   
+ 
+{
+createDiagFromType :: Ident -> DiagType -> Diag_
+createDiagFromType nm (Type_Compiler (l1, l2) (Right m)) = Compiler nm l1 l2 m
+createDiagFromType nm (Type_Compiler (l1, l2) (Left  m)) = Execute (wrapDiag $ Compiler nm l1 l2 m) (wrapDiag $ Platform m)
+createDiagFromType nm (Type_Interpreter l     (Right m)) = Interpreter nm l m
+createDiagFromType nm (Type_Interpreter l     (Left  m)) = Execute (wrapDiag $ Interpreter nm l m)  (wrapDiag $ Platform m)
+createDiagFromType nm (Type_Program           (Right l)) = Program nm l
+createDiagFromType nm (Type_Program           (Left  l)) = Execute (wrapDiag $ Program nm l) (wrapDiag $ Platform l)
+createDiagFromType nm (Type_Platform          m        ) = Platform m
+createDiagFromType nm (_                               ) = Platform "T"
+
+wrapDiag :: Diag_ -> Diag
+wrapDiag = Diag (SourcePos Stdin EOF) BindNil Nothing
+}

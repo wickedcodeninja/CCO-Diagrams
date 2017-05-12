@@ -1,3 +1,6 @@
+-- (C) 2008 Stefan Holdermans
+--     2017 Wout Elsinghorst, Xander van der Goot
+
 imports
 {
 import CCO.Tree             (ATerm (App), Tree (fromTree, toTree))
@@ -20,7 +23,6 @@ data Diagram
 data DiagBinds
   | BindNil
   | BindCons     name :: {String} d :: Diag      ds :: DiagBinds
-
 data Diag_
   | Program      p  :: {Ident}  l  :: {Ident}
   | Platform     m  :: {Ident}
@@ -30,8 +32,8 @@ data Diag_
   | Compile      d1 :: Diag     d2 :: Diag
   
 data Diag
-  | Diag  pos  :: {SourcePos} typeAnnotation :: {Maybe (Ident, DiagType)} binds :: DiagBinds d :: Diag_
-  | Use   pos  :: {SourcePos} name :: {Ident}
+  | Diag  pos  :: {SourcePos} binds :: DiagBinds typeAnnotation :: {Maybe DiagType} d :: Diag_
+  | Use   pos  :: {SourcePos} name :: {Ident} typeAnnotation :: {Maybe DiagType}
 
   
 {
@@ -56,18 +58,18 @@ data DiagType
   | Type_Executable Language
   deriving Eq
 instance Show DiagType where
-  show (Type_Program           (Right m))  = "Program {"  ++ m ++  "}"
-  show (Type_Program           (Left  m))  = "Program {!" ++ m ++ "!}"
-  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {"  ++ m ++  "}"
-  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [" ++ l1 ++ "] ~> {" ++ l2 ++ "} / {!" ++ m ++ "!}" 
-  show (Type_Interpreter l1    (Right l2)) = "Interpreter [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
-  show (Type_Interpreter l1    (Left  l2)) = "Interpreter [" ++ l1 ++ "] ~> {!" ++ l2 ++ "!}"
+  show (Type_Program           (Right m))  = "Program { "  ++ m ++  " }"
+  show (Type_Program           (Left  m))  = "Program {! " ++ m ++ " !}"
+  show (Type_Compiler (l1, l2) (Right m))  = "Compiler [ " ++ l1 ++ " ] ~> { " ++ l2 ++ " } / { "  ++ m ++  " }"
+  show (Type_Compiler (l1, l2) (Left  m))  = "Compiler [ " ++ l1 ++ " ] ~> { " ++ l2 ++ " } / {! " ++ m ++ " !}" 
+  show (Type_Interpreter l1    (Right l2)) = "Interpreter [ " ++ l1 ++ " ] ~> { "  ++ l2 ++  " }"
+  show (Type_Interpreter l1    (Left  l2)) = "Interpreter [ " ++ l1 ++ " ] ~> {! " ++ l2 ++ " !}"
   
   show (Type_Top)                          = "Top"
-  show (Type_Executor l1)                  = "Executor [" ++ l1 ++ "] ~> {!" ++ l1 ++ "!}"
-  show (Type_Transformer (l1, l2))         = "Transformer [" ++ l1 ++ "] ~> {" ++ l2 ++ "}"
-  show (Type_Executable l1)                = "Executable {" ++ l1 ++ "}"
-  show (Type_Platform m)                   = "Platform {!" ++ m ++ "!}"
+  show (Type_Executor l1)                  = "Executor [ " ++ l1 ++ " ] ~> {! " ++ l1 ++ " !}"
+  show (Type_Transformer (l1, l2))         = "Transformer [ " ++ l1 ++ " ] ~> { " ++ l2 ++ " }"
+  show (Type_Executable l1)                = "Executable { " ++ l1 ++ " }"
+  show (Type_Platform m)                   = "Platform {! " ++ m ++ " !}"
 }
   
 -------------------------------------------------------------------------------
@@ -77,10 +79,10 @@ instance Show DiagType where
 {
 instance Tree Diag where
   fromTree (Diag pos typ binds d) = App "Diag" [fromTree pos, fromTree typ, fromTree binds, fromTree d]
-  fromTree (Use  pos name)    = App "Use"  [fromTree pos, fromTree name]
+  fromTree (Use  pos typ name)    = App "Use"  [fromTree pos, fromTree typ, fromTree name]
   
   toTree = parseTree [ app "Diag" (Diag <$> arg <*> arg <*> arg <*> arg)
-                     , app "Use"  (Use  <$> arg <*> arg                )
+                     , app "Use"  (Use  <$> arg <*> arg <*> arg        )
                      ]
 
 instance Tree Diag_ where

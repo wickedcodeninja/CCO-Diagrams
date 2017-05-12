@@ -1,0 +1,32 @@
+let 
+[ myLinux = platform i686-linux
+, myCompiler = compiler grammaz from UUAG to Haskell in i686-windows
+, myFirstInterpreter = interpreter hugs for Haskell in i686-windows
+, mySecondInterpreter = interpreter VMWare for i686-windows in i686-linux
+, myProgram = program hello in UUAG
+, myCompileStep =
+    compile
+        use myProgram
+      with
+        use myCompiler :: Compiler [ UUAG ] ~> { Elm } / { i686-windows }
+      end
+, mySecondIndirection = use myCompileStep
+, myFirstExecution = 
+    execute
+      use mySecondInterpreter
+    on
+      use myLinux
+    end
+, mySecondExecution =
+    execute :: Interpreter [ Haskell ] ~> {! i686-linux !}
+      use myFirstInterpreter
+    on
+      use myFirstExecution
+    end
+, myFirstIndirection = use mySecondIndirection
+] in
+execute
+  use myFirstIndirection :: Program { Haskell }
+on 
+  use mySecondExecution
+end

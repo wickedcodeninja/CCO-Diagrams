@@ -14,7 +14,7 @@
 
 module {CCO.Diag.AG}{}{}
 
-include "AG/TypeChecking.ag"
 include "AG/Base.ag"
+include "AG/Semantics.ag"
+include "AG/TypeChecking.ag"
 include "AG/TPicture.ag"
-
