@@ -1,7 +1,8 @@
 Authors:
-- Stefan Holdermans
-- Wout Elsinghorst (w.l.elsinghorst@students.uu.nl)
-- Xander van der Goot (x.r.goot@students.uu.nl)
+
+ - Stefan Holdermans
+ - Wout Elsinghorst (w.l.elsinghorst@students.uu.nl)
+ - Xander van der Goot (x.r.goot@students.uu.nl)
 
 # Introduction
 
@@ -9,9 +10,10 @@ This project supports type checking and rendering of Diagrams written in the dom
 
 # Installation
 Required:
-- GHC 8.0.2 or Haskell Stack
-- pdfTeX 3.14159265-2.6-1.40.17 (pdflatex)
-- extsizes package for LaTeX (usually included within your systems TeX Live Distribution)
+
+ - GHC 8.0.2 or Haskell Stack
+ - pdfTeX 3.14159265-2.6-1.40.17 (pdflatex)
+ - extsizes package for LaTeX (usually included within your systems TeX Live Distribution)
 
 To build and install this project using Cabal run `make && cabal install`.
 
@@ -20,10 +22,11 @@ Run `make -f stack-makefile` to build and install the project within the virtual
 
 # Running
 This project consists out of four executables:
--  parse-tdiag
--  tc-tdiag
--  tdiag2picture
--  pp-picture
+
+ - parse-tdiag
+ - tc-tdiag
+ - tdiag2picture
+ - pp-picture
 
 When installed, the programs can be chained together using the pipe command:
 
