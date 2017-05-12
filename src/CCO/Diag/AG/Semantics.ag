@@ -23,9 +23,9 @@ sem Diag
 attr Diag Diag_
   syn   canExecuteLanguage :: { Maybe Language }
 attr Diag Diag_ DiagBinds
-  inh   canExecuteLanguageList :: { Environment (Maybe Language)                }
+  inh   canExecuteLanguageList :: { Environment (Maybe Language) }
 attr DiagBinds
-  syn   canExecuteLanguageList use {++} { [] } :: { Environment (Maybe Language)                }
+  syn   canExecuteLanguageList use {++} { [] } :: { Environment (Maybe Language) }
   
   
 sem Diag_
@@ -51,7 +51,7 @@ sem Diagram
   | Diagram     d.canExecuteLanguageList = []
   
   
--- Semantics: Whether the Diagram represented by this node is able to transform
+-- Semantics: Whether the Diagram represented by this node is able to compile
 --            another Executable diagram from the source language to the target 
 --            language.
 
@@ -93,9 +93,9 @@ sem Diagram
 attr Diag Diag_
   syn   implementationLanguage :: { Either Platform Language }
 attr Diag Diag_ DiagBinds
-  inh   implementationLanguageList :: { Environment (Either Platform Language)      }
+  inh   implementationLanguageList :: { Environment (Either Platform Language) }
 attr DiagBinds
-  syn   implementationLanguageList use {++} { [] } :: { Environment (Either Platform Language)      }
+  syn   implementationLanguageList use {++} { [] } :: { Environment (Either Platform Language)}
   
  
 sem Diag_
