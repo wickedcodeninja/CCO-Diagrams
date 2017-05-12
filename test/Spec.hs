@@ -20,23 +20,23 @@ test n d t = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSp
                 generate_tex n a
                 replace ".0" "" a `shouldBe` filter (not . isSpace) t
 
-dprog = Diag sp Nothing (BindNil) (Program "hello" "Haskell")
+dprog = Diag sp (BindNil) Nothing (Program "hello" "Haskell")
 
-dplat = Diag sp Nothing (BindNil) (Platform "i686-windows")
+dplat = Diag sp (BindNil) Nothing (Platform "i686-windows")
 
-dint = Diag sp Nothing (BindNil) (Interpreter "hugs" "Haskell"  "i686-windows")
+dint = Diag sp (BindNil) Nothing (Interpreter "hugs" "Haskell"  "i686-windows")
 
-dcomp = Diag sp Nothing (BindNil) (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
+dcomp = Diag sp (BindNil) Nothing (Compiler "uuagc" "UUAG" "Haskell" "i686-windows")
 
-dpint = Diag sp Nothing (BindNil) (Execute dprog dint)
+dpint = Diag sp (BindNil) Nothing (Execute dprog dint)
 
-dpexe = Diag sp Nothing (BindNil) (Execute dprog dplat)
+dpexe = Diag sp (BindNil) Nothing (Execute dprog dplat)
 
-dintexe = Diag sp Nothing (BindNil) (Execute dint dplat)
+dintexe = Diag sp (BindNil) Nothing (Execute dint dplat)
 
-dprogcomp = Diag sp Nothing (BindNil) (Compile (Diag sp Nothing (BindNil) (Program "hello" "UUAG")) dcomp)
+dprogcomp = Diag sp (BindNil) Nothing (Compile (Diag sp (BindNil) Nothing (Program "hello" "UUAG")) dcomp)
 
-dmax = Diag sp Nothing (BindNil) (Execute dprogcomp dint)
+dmax = Diag sp (BindNil) Nothing (Execute dprogcomp dint)
 
 main :: IO ()
 main = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dmax
