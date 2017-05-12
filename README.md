@@ -31,11 +31,11 @@ When installed, the programs can be chained together using the pipe command:
 
 For example, on a Unix system with a working LaTeX suite you can run the following to parse, typecheck, convert, print and render the test diagrams:
     
-    cat test/parser/test10.diag | parse-tdiag | tc-tdiag | tdiag2picture | pp-picture | pdflatex
+    cat test/bindings/test3.diag | parse-tdiag | tc-tdiag | tdiag2picture | pp-picture | pdflatex
 
 Or within stack:
     
-    cat test/parser/test10.diag | stack exec parse-tdiag | stack exec tc-tdiag | stack exec tdiag2picture | stack exec pp-picture | pdflatex
+    cat test/bindings/test3.diag | stack exec parse-tdiag | stack exec tc-tdiag | stack exec tdiag2picture | stack exec pp-picture | pdflatex
 
 # Testing
 To run the test suite use the following command:
@@ -52,7 +52,7 @@ We've implemented a type checker for the semantics defined in the `Formal Semant
 
 The error messages are expressed in terms of the expected functionality for its sub-diagrams, for example by complaining that the first argument to an `execute` statement is not (a subtype of) the required `Executable` type. Only the first error encountered is reported, with a group of `let`-bindings bindings being checked top-to-bottom. If the diagram is type-correct in terms of the types inferred for its children, the type for the diagram itself is synthesized and then compared to the (optional) type annotation. If this all succeeds, the diagram is deemed type-correct and resulting type is propagated upwards. 
 
-The following error message is shown when trying to execute an interpreter which runs on `i686-linux` on another interpreter which can only run executables written in `Haskell`:
+The following error message is shown when trying to execute an `Interpreter` which runs on `i686-linux` on another `Interpreter` which can only run executables written in `Haskell`:
 
     > line 1:column 1: Type error: /Execute/: The first diagram is inferred to have
     > been written in the language 'i686-linux' which is different from the execution
@@ -81,7 +81,7 @@ To allow the binding of Diagrams to variables, the grammar of the language was e
 
 `| let [ (Ik = Dk)* ] in D`
 
-This allows you to bind zero or more diagrams `Dk` to identifiers `Ik` which can be refered to from within the diagram `D` by the use of `Use` statements, which are explained in the next section. Bindings introduced here shadow bindings introduced higher up in the diagram tree and diagrams within a binding group can also refer to other bindings introduced in the same group (both forward and backward references are allowed). No effort was taken to gracefully prevent cyclic references. Hopefully these will be caught with runtime exiting with an informative `<<loop>>` message, but no guaruantees are given.
+This allows you to bind zero or more diagrams `Dk` to identifiers `Ik` which can be refered to from within the diagram `D` by the use of `Use` statements, which are explained in the next section. Bindings introduced here shadow bindings introduced higher up in the diagram tree and diagrams within a binding group can also refer to other bindings introduced in the same group (both forward and backward references are allowed). No effort was taken to gracefully prevent cyclic references. Hopefully these will be caught with runtime exiting with an informative `<<loop>>` message, but no guarantees are given.
 
 ## Use-statements
 
@@ -93,8 +93,8 @@ Here `I` is any identifier that was previously introduced in a `let` block. If `
 
 ## Type Signatures
 
-Our language supports optional type signatures which can be provided to each of the basic diagram constructors. Type signatures (if present) are checked against the inferred types and an error is raised if the expected and inferred types don't match. While type signatures are never necessary and all diagrams can be compiled without supplying any signatures, type signatures greatly enhance diagram readability in diagrams which make heavy use of Let-bound references. 
-Type Signatures are introduced by following the first keyword of a diagram constructor with `::` followed by the complete type that you want the whole diagram to have. For example:
+Our language supports optional type signatures which can be provided to each of the basic diagram constructors. Type signatures (if present) are checked against the inferred types and an error is raised if the expected and inferred types don't match. While type signatures are never necessary and all diagrams can be compiled without supplying any signatures, type signatures greatly enhance diagram readability in diagrams which make heavy use of `let`-bound references. 
+Type signatures are introduced by following the first keyword of a diagram constructor with `::` followed by the complete type that you want the whole diagram to have. For example:
 
     compile :: Program { Haskell }
       program hello in UUAG
@@ -110,7 +110,8 @@ Type Signatures are introduced by following the first keyword of a diagram const
 
 The second type signature indicate that executing a compiler written for the Windows platform on VMWare for Linux results in a compiler accepting the same languages as the original compiler but now running on the Linux platform.
 
-The only two exceptions to this way of introducing type signatures are the `Use` and the `Platform` constructors. For these the type signature follows the same general format but introduction symbol `::` follows the first identifier instead of the keyword. For example:
+The only two exceptions to this way of introducing type signatures are the `use` and the `platform` constructors. For these the type signature follow the same general format but introduction symbol `::` follows the first identifier instead of the keyword. For example:
+    
     ...
     execute
       use myProgram :: Program { Java }
@@ -118,6 +119,7 @@ The only two exceptions to this way of introducing type signatures are the `Use`
       platform Java :: Platform {! Java !}
     end
     ...
+    
 In the examples above, `[ l1 ]` indicates that the program accepts other programs written in language `l1`, `{! m !}`  indicates a non-executable platform `m` and `{ l3 }` indicates that the language `l3` can still serve as input for other compilers/interpreters (i.e. it is not already running). The `~>` arrow indicates that the program transforms its input in the designated way.
 
 If the declaration of the diagram `myProgram` in the example above actually were to be of type `Program { PHP }` (i.e. of type different than the given annotation), then the following error message would inform the user of his error:
@@ -190,10 +192,10 @@ The type rules defined in the chapter `Formal Semantics` where implemented using
  - `syn canCompileLanguage :: Maybe (Language, Language)`
  - `syn implementationLanguage :: Either (Platform, Language)`
  
- The attributes `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely it contains whether the diagram represented by this node is an `Executor` or not, and if it does it contains the precise `inputLanguage` which makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
- The `implementationLanguage` attribute decides whether the diagram is `Executable` or not, and if so it gives the `implementationLanguage` in the `Right` constructor or platform on which it is running in the `Left` constructor. For each node, the value of these attributes is easily expressed in terms of the values of any the sub-diagrams of that node, with the implementation so obvious that we will not describe it here. 
+ The attributes `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely, it contains whether the diagram represented by this node is an `Executor` or not, and if it does it contains the precise `inputLanguage` which makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
+ The `implementationLanguage` attribute decides whether the diagram is `Executable` or not, and if so it gives the `implementationLanguage` in the `Right` constructor or the platform on which it is running in the `Left` constructor. For each node, the value of these attributes is easily expressed in terms of the values of any of the sub-diagrams of that node, with the implementation so obvious that we will not describe it here. 
  
- To implement `let`-binds, an environment is constructed for each of the attributes listed above, mapping the identifier for the diagram to the corresponding attribute. The attributes for a `use` statements are calculated by performing a simple lookup in the previously constructed environment. As is usual, the environments synthesized from a list of `let`-bound are fed back into that same list as inherited attributes so that the attributes for the declared diagrams become available within the list of declaration where they were originally declared in.
+ To implement `let`-binds, an environment is constructed for each of the attributes listed above, mapping the identifier for the diagram to the corresponding attribute. The attributes for a `use` statements are calculated by performing a simple lookup in the previously constructed environments. As is usual, the environments synthesized from a list of `let`-bound are fed back into that same list as inherited attributes so that the attributes for the declared diagrams become available within the list of declarations where they were originally declared in.
  
  With all these attributes available in a given node, the type checker then uses these attributes to check if the sub diagrams have compatible types, and if all is well it synthesizes a `diagType` attribute which neatly summarizes the diagram. This is used for later error diagnosis higher up the diagram tree.
  
@@ -207,7 +209,7 @@ The implementation of the main semantic rules `canExecuteLanguage`, `canCompileL
 
 ## Let Binding
 
-To implement `let`-bindings the parser and lexer had to be extended to parse the concrete syntax for lists of type `[(String, Diag_)]`. The files `CCO/Diag/Parser.hs` and `CCO/Diag/Lexer.hs` were extended to include the relevant extensions. We choose to extend the `Diag` constructor of the `Diag` datatype with the possibly empty list of declarations which were attached to the accompanying diagram `Diag_`. The `Diag` datatype also gained a `Use` constructor containing the reference to the referred diagram.
+To implement `let`-bindings the parser and lexer had to be extended to parse the concrete syntax for lists of type `[(String, Diag_)]`. The files `CCO/Diag/Parser.hs` and `CCO/Diag/Lexer.hs` were extended to include the relevant extensions. We choose to extend the `Diag` constructor of the `Diag` datatype with the possibly empty list of declarations which were attached to the accompanying diagram `Diag_`. The `Diag` datatype also gained a `Use` constructor containing the identifier of the referred diagram.
 
 ## Type Signatures
 
@@ -217,7 +219,7 @@ We also extended the constructors of the `Diag` datatype to `Maybe` contain a ty
 
 The first `DiagType` argument is the inferred type and the second argument is `Maybe` the type annotation given in the source file. If none was given the function will never return an error.
     
-To support type annotations we also gave `Tree` instances for the `DiagType` datatype so that our annotated `Diag` diags have a complete `ATerm` representation. The output of the `tc-tdiag` program is actually a fully type-annotated `Diag` tree, so the output of this program can also be used to manually verify the inferred type for each every subdiagram of the supplied input.
+To support type annotations we also gave `Tree` instances for the `DiagType` datatype so that our annotated `Diag` diags have a complete `ATerm` representation. The output of the `tc-tdiag` program is actually a fully type-annotated `Diag` tree, so the output of this program can also be used to manually verify the inferred type for each and every subdiagram of the supplied input.
 
 ## Diagram to Picture Conversion
 
