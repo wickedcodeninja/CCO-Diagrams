@@ -30,6 +30,10 @@ dcomp = Diag sp Nothing (BindNil) (Compiler "uuagc" "UUAG" "Haskell" "i686-windo
 
 dpint = Diag sp Nothing (BindNil) (Execute dprog dint)
 
+dpexe = Diag sp Nothing (BindNil) (Execute dprog dplat)
+
+dintexe = Diag sp Nothing (BindNil) (Execute dint dplat)
+
 dprogcomp = Diag sp Nothing (BindNil) (Compile (Diag sp Nothing (BindNil) (Program "hello" "UUAG")) dcomp)
 
 dmax = Diag sp Nothing (BindNil) (Execute dprogcomp dint)
@@ -37,6 +41,10 @@ dmax = Diag sp Nothing (BindNil) (Execute dprogcomp dint)
 main :: IO ()
 main = do a <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dmax
           generate_tex "dmax" a
+          b <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dpexe
+          generate_tex "dpexe" b
+          c <- ioRun (diag2picture >>> printer >>> arr (filter (not . isSpace))) dintexe
+          generate_tex "dintexe" c
           hspec $ do
               describe "t2d" $ do
                 it "Program" $ do

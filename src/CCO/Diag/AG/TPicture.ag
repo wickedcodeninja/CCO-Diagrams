@@ -171,7 +171,7 @@ mkProgram' (V2 x y) p l =
   ]
 
 progAtt = V4 (V2 57.5 10) (V2 7.5 10) (V2 7.5 0) (V2 0 0)
-platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 30 0)
+platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 0 30)
 intAtt = V4 (V2 50 10) (V2 0 10) (V2 0 0) (V2 0 30)
 compAtt = V4 (V2 100 10) (V2 150 30) (V2 100 0) (V2 0 30)
 
