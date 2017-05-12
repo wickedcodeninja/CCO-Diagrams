@@ -89,7 +89,7 @@ To allow references to previously bound diagrams, the grammar of the language wa
 
 `| use I`
 
-Here `I` is any identifier that was previously introduced in a let block. If `I` is not in scope then an out-of-scope error message will be given. When `d` is in scope, then for all intends and purposes, every occurence of the statement `use d` is given the exact same semantics as the diagram referenced to by `d`. Specifically, the statement `use d` has the same type, name and capabilities as the diagram referenced to by `d`. The output of the type checker replaces (inlines) all occurences of any `use` statement with the corresponding diagram which it refers to, thus eleminating any sharing from the original diagram. The diagram to Picture converter currently relies on this behavior and does not directly support converting any diagrams still containing any `use` statements.
+Here `I` is any identifier that was previously introduced in a `let` block. If `d` is any specific identifier which is out-of-scope, an error message will be given. When `d` is in scope, then for all intends and purposes, every occurence of the statement `use d` is given the exact same semantics as the diagram referenced to by `d`. Specifically, the statement `use d` has the same type, name and capabilities as the diagram referenced to by `d`. The output of the type checker replaces (inlines) all occurences of any `use` statement with the corresponding diagram which it refers to, thus eleminating any sharing from the original diagram. The Diagram-To-Picture converter currently relies on this behavior and does not directly support converting any diagrams still containing any `use` statements.
 
 ## Type Signatures
 
@@ -111,15 +111,23 @@ Type Signatures are introduced by following the first keyword of a diagram const
 The second type signature indicate that executing a compiler written for the Windows platform on VMWare for Linux results in a compiler accepting the same languages as the original compiler but now running on the Linux platform.
 
 The only two exceptions to this way of introducing type signatures are the `Use` and the `Platform` constructors. For these the type signature follows the same general format but introduction symbol `::` follows the first identifier instead of the keyword. For example:
-
+    ...
     execute
       use myProgram :: Program { Java }
     on
       platform Java :: Platform {! Java !}
     end
-  
+    ...
 In the examples above, `[ l1 ]` indicates that the program accepts other programs written in language `l1`, `{! m !}`  indicates a non-executable platform `m` and `{ l3 }` indicates that the language `l3` can still serve as input for other compilers/interpreters (i.e. it is not already running). The `~>` arrow indicates that the program transforms its input in the designated way.
 
+If the declaration of the diagram `myProgram` in the example above actually were to be of type `Program { PHP }` (i.e. of type different than the given annotation), then the following error message would inform the user of his error:
+
+    line 7:column 3: Type error: The provided type signature for the diagram
+    'myProgram' doesn't match the inferred type.
+ 
+    ? Expected type: Program { Java }
+    ? Inferred type: Program { PHP }
+    
 ## Informal Semantics
 
 We have designed a subtyping hierarchy for our diagram language which explains the meaning we give to a diagram. The exact inference rules are explained in the chapter `Formal Semantics`, but basically our inference rules amount to the following observations:
@@ -182,7 +190,7 @@ The type rules defined in the chapter `Formal Semantics` where implemented using
  - `syn canCompileLanguage :: Maybe (Language, Language)`
  - `syn implementationLanguage :: Either (Platform, Language)`
  
- The rules `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely it contains whether the diagram represented by this node is an `Executor` or not, and if it does it contains the precise `inputLanguage` which makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
+ The attributes `canExecuteLanguage` and `canCompileLanguage` correspond respectively to the `Executor` and `Compiler` identities defined above. The `canExecuteLanguage` attribute has type `Maybe Language`, and it contains two pieces of information. Namely it contains whether the diagram represented by this node is an `Executor` or not, and if it does it contains the precise `inputLanguage` which makes makes it an `Executor`. Similarly, the `canCompileLanguage` attribute contains both the fact of whether the diagram represented by this node is a `Compiler` or not, and, the `inputLanguage` and the `outputLanguage` if this is the case.
  The `implementationLanguage` attribute decides whether the diagram is `Executable` or not, and if so it gives the `implementationLanguage` in the `Right` constructor or platform on which it is running in the `Left` constructor. For each node, the value of these attributes is easily expressed in terms of the values of any the sub-diagrams of that node, with the implementation so obvious that we will not describe it here. 
  
  To implement `let`-binds, an environment is constructed for each of the attributes listed above, mapping the identifier for the diagram to the corresponding attribute. The attributes for a `use` statements are calculated by performing a simple lookup in the previously constructed environment. As is usual, the environments synthesized from a list of `let`-bound are fed back into that same list as inherited attributes so that the attributes for the declared diagrams become available within the list of declaration where they were originally declared in.

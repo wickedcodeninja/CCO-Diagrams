@@ -149,7 +149,7 @@ checkTyWithAnnotation :: SourcePos -> Ident -> DiagType -> Maybe DiagType -> [Di
 checkTyWithAnnotation pos diagName inferredType Nothing = []
 checkTyWithAnnotation pos diagName inferredType (Just typeAnnotation) 
   | inferredType == typeAnnotation = []
-  | otherwise                      = [TyError pos [] inferredType (Just typeAnnotation) $ "The provided type signature for the composite diagram '" ++ diagName ++ "' doesn't match the inferred type."] 
+  | otherwise                      = [TyError pos [] inferredType (Just typeAnnotation) $ "The provided type signature for the diagram '" ++ diagName ++ "' doesn't match the inferred type."] 
 
 checkTyUse :: SourcePos -> Environment DiagType -> String -> Maybe DiagType -> [Diagnostic]
 checkTyUse pos env name (Just typ) = []

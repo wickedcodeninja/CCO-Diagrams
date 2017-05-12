@@ -1,0 +1,10 @@
+let [
+  myProgram = program :: Program { PHP } 
+                Sheeple 
+              in PHP 
+] in 
+execute
+  use myProgram :: Program { Java }
+on
+  platform Java :: Platform {! Java !}
+end
