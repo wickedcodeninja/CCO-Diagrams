@@ -80,9 +80,9 @@ You can see that the type checker infers from the second argument of `execute` (
 
 We've also used the UUAG to implement a program to convert a program written in the T-Diagram language to a Picture representation which matches our chosen semantics. This Picture representation is essentially a list of drawing commands which describes where and how to draw lines, text and frames. 
 
-Each of the base Diagram types (`program`, `platform`, `interpreter` and `compiler`) has a corresponding set of drawing commands to them. For the composite Diagrams (`compile` and `execute`) the diagram is created by concatenating the child diagrams together in a way that conforms with our defined semantics.
+Each of the base Diagram types (`program`, `platform`, `interpreter` and `compiler`) has a corresponding set of drawing commands to them. For the composite Diagrams (`compile` and `execute`) the diagram is created by concatenating and 'shifting' the drawing commands of the child diagrams in a way that conforms with our defined semantics.
 
-The drawing commands have to be given an initial point from which they should be drawing, this initial point is given by the `Put` command. This initial point is referenced relative to the origin. From some basic experimentation it seems that the `picture` environment within LaTeX supports the use of negative coordinates for `Put`. However we have chosen to define the lower left point of a picture to be the origin. This is in line with the example output in the assignment.
+The drawing commands have to be given an initial point from which the drawing starts. This initial point is given with the `Put` command. The initial point is referenced relative to the origin. From some basic experimentation it seems that the `picture` environment within LaTeX supports the use of negative coordinates for `Put`. However we have chosen to define the lower left point of a picture to be the origin. This is in line with the example output in the assignment.
 
 ## Let-bindings
 
