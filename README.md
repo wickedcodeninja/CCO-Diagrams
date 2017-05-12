@@ -9,9 +9,9 @@ This project supports type checking and rendering of Diagrams written in the dom
 
 # Installation
 Required:
-- GHC 8.0.2 or Haskell stack
+- GHC 8.0.2 or Haskell Stack
 - pdfTeX 3.14159265-2.6-1.40.17 (pdflatex)
-- extsizes package for Latex (often included with your TeX distribution)
+- extsizes package for LaTeX (usually included within your systems TeX Live Distribution)
 
 To build and install this project using Cabal run `make && cabal install`.
 
@@ -20,10 +20,10 @@ Run `make -f stack-makefile` to build and install the project within the virtual
 
 # Running
 This project consists out of four executables:
-- parse-tdiag
-- tc-tdiag
-- tdiag2picture
-- pp-picture
+-  parse-tdiag
+-  tc-tdiag
+-  tdiag2picture
+-  pp-picture
 
 When installed, the programs can be chained together using the pipe command:
 
@@ -38,9 +38,11 @@ Or within stack:
     cat test/parser/test10.diag | stack exec parse-tdiag | stack exec tc-tdiag | stack exec tdiag2picture | stack exec pp-picture | pdflatex
 
 # Testing
-To run the test suite use the following command:
+To run the unit tests use the following command:
 
     make -f stack-makefile test
+
+More test/examples can be found in `test/parser/`. To generate `pdf` files for all files in the before mentioned directory run `./run_parser_tests.sh`.
 
 # Functionality 
 
