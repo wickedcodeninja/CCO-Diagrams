@@ -106,43 +106,49 @@ sem Diag_
   | Execute 
       lhs.pic    = @d1.pic ++ @d2.pic
       lhs.outAttach = @d2.outAttach
-      lhs.yrange = ranges @d1.yrange @d2.yrange
-      lhs.xrange = ranges @d1.xrange @d2.xrange
+      lhs.yrange = combineRanges @d1.yrange @d2.yrange
+      lhs.xrange = combineRanges @d1.xrange @d2.xrange
 
       d1.connect = @lhs.connect
       d2.connect = (Execl . getPoint . impl) @d1.outAttach
 
      
   | Compile 
-      lhs.pic    = []
-      lhs.outAttach = attachProgram @lhs.connect
-      lhs.yrange = V2 0 0
-      lhs.xrange = V2 0 0 
+      lhs.pic    = @d1.pic ++ @d2.pic ++ (pic_Syn_Diag_ @loc.d3)
+      lhs.outAttach = (outAttach_Syn_Diag_ @loc.d3)
+      lhs.xrange = @d1.xrange `combineRanges` @d2.xrange `combineRanges` (xrange_Syn_Diag_ @loc.d3)
+      lhs.yrange = @d1.yrange `combineRanges` @d2.yrange `combineRanges` (yrange_Syn_Diag_ @loc.d3)
 
-      loc.ranges = rangeProgram @lhs.connect
+      d1.connect = @lhs.connect
+      d2.connect = (Execl . getPoint . compIn) @d1.outAttach
+
+      loc.emptyDiag_Inh =
+        empty_Diag_ {
+          xoffset_Inh_Diag_ = @lhs.xoffset,
+          yoffset_Inh_Diag_ = @lhs.yoffset,
+          connect_Inh_Diag_ = compOut @d2.outAttach
+        }
+
+      loc.summaryDiag = createDiagFromType @loc.diagName @loc.diagType
+      loc.d3 = wrap_Diag_ (sem_Diag_ @loc.summaryDiag) @loc.emptyDiag_Inh
 
 {
 
-ranges :: V2 Double -> V2 Double -> V2 Double
-ranges f s = V2 rmin rmax
+combineRanges :: V2 Double -> V2 Double -> V2 Double
+combineRanges f s = V2 rmin rmax
   where rmin = min (f ^. _x) (s ^. _x)
         rmax = max (f ^. _y) (s ^. _y)
 
-progOrig  = V4 (V2 (-57.5) (-15)) (V2 (-7.5) (-15)) (V2 (-7.5) 0) (V2 0 0)
-platOrig  = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 (-30) 0)
-intOrig = V4 (V2 (-50) (-10)) (V2 0 (-10)) (V2 0 0) (V2 0 (-30))
-compOrig = V4 (V2 (-100) (-10)) (V2 (-150) (-30)) (V2 (-50) 0) (V2 0 0)
-
-orig Plat = orig' platOrig 
-orig Prog = orig' progOrig
-orig Inter = orig' intOrig
-orig Comp = orig' compOrig
+orig Plat = orig' platAtt 
+orig Prog = orig' progAtt
+orig Inter = orig' intAtt
+orig Comp = orig' compAtt
 
 orig' :: M42 Double -> Connect -> Point
-orig' (V4 a b c d) (CompIn e) = e ^+^ a
-orig' (V4 a b c d) (CompOut e) = e ^+^ b 
-orig' (V4 a b c d) (Impl e) = e ^+^ c
-orig' (V4 a b c d) (Execl e) = e ^+^ d
+orig' (V4 a b c d) (CompIn e) = e ^-^ a
+orig' (V4 a b c d) (CompOut e) = e ^-^ b 
+orig' (V4 a b c d) (Impl e) = e ^-^ c
+orig' (V4 a b c d) (Execl e) = e ^-^ d
 
 mk d f c off = f (base ^+^ off)
   where base  = orig d c
@@ -164,10 +170,10 @@ mkProgram' (V2 x y) p l =
   , Put (x+7.5, y) (Makebox (50,15) l)
   ]
 
-progAtt = V4 (V2 57.5 15) (V2 7.5 15) (V2 7.5 0) (V2 0 0)
-platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 0 0)
+progAtt = V4 (V2 57.5 10) (V2 7.5 10) (V2 7.5 0) (V2 0 0)
+platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 30 0)
 intAtt = V4 (V2 50 10) (V2 0 10) (V2 0 0) (V2 0 30)
-compAtt = V4 (V2 100 10) (V2 150 30) (V2 100 0) (V2 0 0)
+compAtt = V4 (V2 100 10) (V2 150 30) (V2 100 0) (V2 0 30)
 
 attachProgram = attach Prog progAtt
 attachPlatform = attach Plat platAtt
@@ -239,6 +245,11 @@ renderDiagram diagram = pic_Syn_Diagram (wrap_Diagram (sem_Diagram diagram) Inh_
 empty_Diag_ =
   Inh_Diag_ {
     pos_Inh_Diag_ = SourcePos Stdin EOF,
+
+    connect_Inh_Diag_ = CompOut (V2 0 0),
+
+    xoffset_Inh_Diag_ = 0,
+    yoffset_Inh_Diag_ = 0,
     
     diagTypeList_Inh_Diag_ = [], 
     canExecuteLanguageList_Inh_Diag_ = [], 
