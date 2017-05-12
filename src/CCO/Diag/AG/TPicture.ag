@@ -5,35 +5,42 @@ imports
 import CCO.Picture
 import Linear
 import Control.Lens
+import qualified Data.Vector as V
 }
 
 {
 type Point = V2 Double
 type Range = V2 Double
 
-data Connect = CompIn Point | CompOut Point | Impl Point | Execl Point
+type AttachMatrix = V.Vector (V2 Double)
+
+data Connect = CompIn Point | CompOut Point | Impl Point | Execl Point | Source Point | Target Point
 
 getPoint :: Connect -> Point
 getPoint (CompIn a) = a
 getPoint (CompOut a) = a
 getPoint (Impl a) = a
 getPoint (Execl a) = a
+getPoint (Source a) = a
+getPoint (Target a) = a
 
 data Attach = 
   Attach {
      compIn :: Connect,                
      compOut :: Connect,
      impl :: Connect,
-     execl :: Connect
+     execl :: Connect,
+     source :: Connect,
+     target :: Connect
   }
 
 data DiagramType = Prog | Plat | Comp | Inter
 
-toM42 :: Attach -> M42 Double
-toM42 a = V4 (getPoint $ compIn a) (getPoint $ compOut a) (getPoint $ impl a) (getPoint $ execl a) 
+toAttachMatrix :: Attach -> AttachMatrix
+toAttachMatrix a = (V.fromList . map getPoint) [compIn a, compOut a, impl a, execl a, source a, target a]
 
-fromM42 :: M42 Double -> Attach
-fromM42 (V4 a b c d) = Attach (CompIn a) (CompOut b) (Impl c) (Execl d)
+fromAttachMatrix :: AttachMatrix -> Attach
+fromAttachMatrix a = Attach (CompIn (a V.! 0)) (CompOut (a V.! 1)) (Impl (a V.! 2)) (Execl (a V.! 3)) (Source (a V.! 4)) (Target (a V.! 5))
 
 }
 
@@ -69,7 +76,7 @@ sem Diag
       lhs.pic    = []
       lhs.xrange = (V2 0 0)
       lhs.yrange = (V2 0 0)
-      lhs.outAttach = Attach (CompIn (V2 0 0)) (CompOut (V2 0 0)) (Impl (V2 0 0)) (Execl (V2 0 0))
+      lhs.outAttach = Attach (CompIn (V2 0 0)) (CompOut (V2 0 0)) (Impl (V2 0 0)) (Execl (V2 0 0)) (Source (V2 0 0)) (Target (V2 0 0))
       
 sem Diag_
   | Program 
@@ -122,13 +129,13 @@ sem Diag_
       lhs.yrange = @d1.yrange `combineRanges` @d2.yrange `combineRanges` (yrange_Syn_Diag_ @loc.d3)
 
       d1.connect = @lhs.connect
-      d2.connect = (Execl . getPoint . compIn) @d1.outAttach
+      d2.connect = (Source . getPoint . compIn) @d1.outAttach
 
       loc.emptyDiag_Inh =
         empty_Diag_ {
           xoffset_Inh_Diag_ = @lhs.xoffset,
           yoffset_Inh_Diag_ = @lhs.yoffset,
-          connect_Inh_Diag_ = compOut @d2.outAttach
+          connect_Inh_Diag_ = (CompOut . getPoint . target) @d2.outAttach
         }
 
       loc.summaryDiag = createDiagFromType @loc.diagName @loc.diagType
@@ -146,11 +153,13 @@ orig Prog = orig' progAtt
 orig Inter = orig' intAtt
 orig Comp = orig' compAtt
 
-orig' :: M42 Double -> Connect -> Point
-orig' (V4 a b c d) (CompIn e) = e ^-^ a
-orig' (V4 a b c d) (CompOut e) = e ^-^ b 
-orig' (V4 a b c d) (Impl e) = e ^-^ c
-orig' (V4 a b c d) (Execl e) = e ^-^ d
+orig' :: AttachMatrix -> Connect -> Point
+orig' a (CompIn e) = e ^-^ (a V.! 0)
+orig' a (CompOut e) = e ^-^ (a V.! 1)
+orig' a (Impl e) = e ^-^ (a V.! 2)
+orig' a (Execl e) = e ^-^ (a V.! 3)
+orig' a (Source e) = e ^-^ (a V.! 4)
+orig' a (Target e) = e ^-^ (a V.! 5)
 
 mk d f c off = f (base ^+^ off)
   where base  = orig d c
@@ -172,19 +181,19 @@ mkProgram' (V2 x y) p l =
   , Put (x+7.5, y) (Makebox (50,15) l)
   ]
 
-progAtt = V4 (V2 57.5 10) (V2 7.5 10) (V2 7.5 0) (V2 0 0)
-platAtt = V4 (V2 0 0) (V2 0 0) (V2 0 0) (V2 0 30)
-intAtt = V4 (V2 50 10) (V2 0 10) (V2 0 0) (V2 0 30)
-compAtt = V4 (V2 100 10) (V2 150 30) (V2 100 0) (V2 0 30)
+progAtt = V.fromList [V2 57.5 10, V2 7.5 10, V2 7.5 0, V2 0 0, V2 0 0, V2 0 0]
+platAtt = V.fromList [V2 0 0, V2 0 0, V2 0 0, V2 0 30, V2 0 0, V2 0 0]
+intAtt = V.fromList  [V2 50 10, V2 0 10, V2 0 0, V2 0 30, V2 0 0, V2 0 0]
+compAtt = V.fromList [V2 100 10, V2 50 10, V2 50 0, V2 0 0, V2 0 30, V2 150 30]
 
 attachProgram = attach Prog progAtt
 attachPlatform = attach Plat platAtt
 attachInterpreter =  attach Inter intAtt
 attachCompiler = attach Comp compAtt
 
-attach :: DiagramType -> M42 Double -> Connect -> Attach
-attach t displacement con = fromM42 mnew
-  where mnew = (V4 base base base base) !+! displacement
+attach :: DiagramType -> AttachMatrix -> Connect -> Attach
+attach t displacement con = fromAttachMatrix mnew
+  where mnew = (V.replicate 6 base) !+! displacement
         base = orig t con
 
 progRange = V2 (V2 0 65) (V2 0 30)
