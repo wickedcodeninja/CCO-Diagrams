@@ -51,7 +51,7 @@ The directory `test` also contains a few prepared Diagram files which can be man
 
 ## Type Checking
 
-We've implemented a type checker for the semantics defined in the `Formal Semantics` chapter below. A more easily digestible version is presented in the chapter `Informal Semantics`. Our type checker uses the Utrecht Attribute Grammar System (UUAG) to recursively calculate these properties for a diagram in terms of the properties calculated for each of its sub-diagrams. 
+We've implemented a type checker for the semantics defined in the `Semantics` chapter below. Our type checker uses the Utrecht Attribute Grammar System (UUAG) to recursively calculate these properties for a diagram in terms of the properties calculated for each of its sub-diagrams. 
 
 ## Error Diagnostics
 
@@ -145,9 +145,9 @@ If the declaration of the diagram `myProgram` in the example above actually were
     ? Expected type: Program { Java }
     ? Inferred type: Program { PHP }
     
-## Informal Semantics
+## Semantics
 
-We have designed a subtyping hierarchy for our diagram language which explains the meaning we give to a diagram. The exact inference rules are explained in the chapter `Formal Semantics`, but basically our inference rules amount to the following observations:
+We have designed a subtyping hierarchy for our diagram language which explains the meaning we give to a diagram. Our inference rules amount to the following observations:
 
  - Diagrams can be divided in two groups, those which are still compilable/executable and those who are not
  - Executing something which is executable makes the result non-executable and non-compilable (you cannot run or compile something which is already running) 
@@ -156,61 +156,11 @@ We have designed a subtyping hierarchy for our diagram language which explains t
  - Platforms are never executable/compilable
  - Compiling something doesn't change the semantics of the program being compiled, e.g. a compiler is still a compiler for the same source/target languages after compiling to run on a different architecture
 
-## Formal Semantics
-
-In our chosen semantics, all compilable programs are executable and vice versa, so in the following we'll make the simplification of treating `Compilable` and `Executable` as synonyms. The following deductions are valid for diagrams written in the Diagram language:
-
- - `Executables`, and only `Executables`, can be executed by an `Executor`
- - `Executables`, and only `Executables`, can be compiled by an `Compiler`
- 
- - `Programs`, `Interpreter`s and `Compilers` are initially `Executable`
- - `Platforms` are never `Executable`
- 
- - `Platforms` and `Interpreters` are `Executors`
- 
- - The statement `compile d1 on d2` is `Executable`
- - The statement `execute d1 on d2` is not `Executable`
- 
- - The statement `execute d1 on d2` is an `Executor` if and only if `d1` is an `Executor` 
- - The statement `execute d1 on d2` is a `Compiler` if and only if `d1` is a `Compiler` 
- 
- - The statement `compile d1 on d2` is an `Executor` if and only if `d1` is an `Executor` 
- - The statement `compile d1 on d2` is a `Compiler` if and only if `d1` is a `Compiler`
- 
- - The `inputLanguage` of `platform m` is `m`
- - The `inputLanguage` of `interpreter c for l in m` is `l`
- - The `inputLanguage` of `compiler c from l1 to l2 in m` is `l1`
- 
- - The `outputLanguage` of `compiler c from l1 to l2 in m` is `l2`
- 
- - The `implementationLanguage` of `program p in l` is `l`
- - The `implementationLanguage` of `interpreter i for l in m` is `m`
- - The `implementationLanguage` of `compiler c from l1 to l2 in m` is `m`
- 
-
-<!--  LocalWords:  outputLanguage platformLanguage canCompileLanguage
- -->
-
-<!--  LocalWords:  inputLanguage canExecuteLanguage
- -->
-
-<!--  LocalWords:  implementationLanguage
- -->
- - The `implementationLanguage` of `compile d1 with d2` is the `outputLanguage` of `d2`
-
- - The `platformLanguage` of `platform m` is `m`
- - The `platformLanguage` of `execute d1 on d2` is the `implementationLanguage` of `d2` if `d2` is `Executable`
- - The `platformLanguage` of `execute d1 on d2` is the `platformLanguage` of `d2` if `d2` is not `Executable`
- 
- - The basic `program`, `interpreter`, `compiler` and `platform` statements are type-correct
- - The statement `execute d1 on d2` is type-correct if `d1` and `d2` are both type-correct, `d1` is an `Executable`, `d2` is an `Executor` and the `implementationLanguage` of `d1` matches the `inputLanguage` of `d2` 
- - The statement `compile d1 with d2` is type-correct if `d1` and `d2` are both type-correct, `d1` is an `Executable`, `d2` is a `Compiler` and the `implementationLanguage` of `d1` matches the `inputLanguage` of `d2` 
-
 # Implementation
  
 ## Type Checking
 
-The type rules defined in the chapter `Formal Semantics` where implemented using the UUAG system. The implementation is a pretty straight forward translation from the type rules above to attributes which capture the intended inferences. The main attributes we've defined, corresponding to the chosen semantics, are 
+The type rules defined in the chapter `Semantics` were implemented using the UUAG system. The implementation is a pretty straight forward translation from the type rules above to attributes which capture the intended inferences. The main attributes we've defined, corresponding to the chosen semantics, are 
 
  - `syn canExecuteLanguage :: Maybe Language`
  - `syn canCompileLanguage :: Maybe (Language, Language)`
